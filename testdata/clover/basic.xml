@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1609459200" clover="4.4.1">
+  <project timestamp="1609459200" name="MyProject">
+    <metrics statements="200" coveredstatements="170"
+             conditionals="50" coveredconditionals="35"
+             methods="40" coveredmethods="32"
+             elements="290" coveredelements="237"
+             loc="500" ncloc="450"
+             packages="3" files="10" classes="10"/>
+  </project>
+</coverage>
