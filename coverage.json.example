@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "coverage": [
+    {
+      "name": "backend",
+      "path": "coverage/lcov.info",
+      "format": "lcov",
+      "threshold": {
+        "line": 80,
+        "branch": 70,
+        "function": 80
+      }
+    },
+    {
+      "name": "api",
+      "path": "cover.out",
+      "format": "gocover",
+      "threshold": {
+        "line": 75
+      }
+    },
+    {
+      "name": "frontend",
+      "path": "coverage/cobertura.xml",
+      "format": "cobertura",
+      "threshold": {
+        "line": 85,
+        "branch": 75
+      }
+    }
+  ]
+}
