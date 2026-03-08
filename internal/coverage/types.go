@@ -50,3 +50,10 @@ type Violation struct {
 	Actual   float64
 	Required float64
 }
+
+// SkippedThreshold records a threshold that was configured but had no
+// corresponding metric data from the coverage report.
+type SkippedThreshold struct {
+	Entry  string
+	Metric string
+}

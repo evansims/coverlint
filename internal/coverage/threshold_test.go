@@ -11,6 +11,7 @@ func TestCheckThresholds(t *testing.T) {
 		threshold      Threshold
 		wantPassed     bool
 		wantViolations int
+		wantSkipped    int
 	}{
 		{
 			name: "all pass",
@@ -45,7 +46,7 @@ func TestCheckThresholds(t *testing.T) {
 			wantViolations: 3,
 		},
 		{
-			name: "metric nil but threshold set - skip no violation",
+			name: "metric nil but threshold set reports skipped",
 			result: CoverageResult{
 				Name: "test",
 				Line: &Metric{Hit: 90, Total: 100},
@@ -53,6 +54,7 @@ func TestCheckThresholds(t *testing.T) {
 			threshold:      Threshold{Line: floatPtr(80), Branch: floatPtr(70)},
 			wantPassed:     true,
 			wantViolations: 0,
+			wantSkipped:    1,
 		},
 		{
 			name: "exactly at threshold passes",
@@ -64,16 +66,31 @@ func TestCheckThresholds(t *testing.T) {
 			wantPassed:     true,
 			wantViolations: 0,
 		},
+		{
+			name: "multiple skipped thresholds",
+			result: CoverageResult{
+				Name: "test",
+				Line: &Metric{Hit: 90, Total: 100},
+				// Branch and Function nil — e.g. gocover format
+			},
+			threshold:      Threshold{Line: floatPtr(80), Branch: floatPtr(70), Function: floatPtr(80)},
+			wantPassed:     true,
+			wantViolations: 0,
+			wantSkipped:    2,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			passed, violations := CheckThresholds(&tt.result, &tt.threshold)
-			if passed != tt.wantPassed {
-				t.Errorf("passed = %v, want %v", passed, tt.wantPassed)
+			cr := CheckThresholds(&tt.result, &tt.threshold)
+			if cr.Passed != tt.wantPassed {
+				t.Errorf("passed = %v, want %v", cr.Passed, tt.wantPassed)
 			}
-			if len(violations) != tt.wantViolations {
-				t.Errorf("got %d violations, want %d: %+v", len(violations), tt.wantViolations, violations)
+			if len(cr.Violations) != tt.wantViolations {
+				t.Errorf("got %d violations, want %d: %+v", len(cr.Violations), tt.wantViolations, cr.Violations)
+			}
+			if len(cr.Skipped) != tt.wantSkipped {
+				t.Errorf("got %d skipped, want %d: %+v", len(cr.Skipped), tt.wantSkipped, cr.Skipped)
 			}
 		})
 	}

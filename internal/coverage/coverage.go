@@ -41,11 +41,11 @@ func Run() error {
 		}
 		result.Name = entry.Name
 
-		passed, violations := CheckThresholds(result, &entry.Threshold)
+		cr := CheckThresholds(result, &entry.Threshold)
 
 		entryResult := EntryResult{
 			Name:   entry.Name,
-			Passed: passed,
+			Passed: cr.Passed,
 		}
 		if result.Line != nil {
 			pct := result.Line.Pct()
@@ -62,9 +62,14 @@ func Run() error {
 
 		allResults = append(allResults, entryResult)
 
-		if !passed {
+		if !cr.Passed {
 			allPassed = false
-			allViolations = append(allViolations, violations...)
+			allViolations = append(allViolations, cr.Violations...)
+		}
+
+		for _, s := range cr.Skipped {
+			EmitAnnotation("notice", fmt.Sprintf("%s: %s threshold configured but not reported by %s format — skipped",
+				s.Entry, s.Metric, entry.Format))
 		}
 	}
 

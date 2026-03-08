@@ -2,32 +2,42 @@ package coverage
 
 import "fmt"
 
-func CheckThresholds(result *CoverageResult, threshold *Threshold) (bool, []Violation) {
-	var violations []Violation
-
-	violations = checkMetric(violations, result.Name, "line", result.Line, threshold.Line)
-	violations = checkMetric(violations, result.Name, "branch", result.Branch, threshold.Branch)
-	violations = checkMetric(violations, result.Name, "function", result.Function, threshold.Function)
-
-	return len(violations) == 0, violations
+// CheckResult holds the outcome of threshold checking for a single entry.
+type CheckResult struct {
+	Passed     bool
+	Violations []Violation
+	Skipped    []SkippedThreshold
 }
 
-func checkMetric(violations []Violation, entry, metric string, m *Metric, threshold *float64) []Violation {
-	if threshold == nil || m == nil {
-		return violations
+func CheckThresholds(result *CoverageResult, threshold *Threshold) CheckResult {
+	var cr CheckResult
+
+	checkMetric(&cr, result.Name, "line", result.Line, threshold.Line)
+	checkMetric(&cr, result.Name, "branch", result.Branch, threshold.Branch)
+	checkMetric(&cr, result.Name, "function", result.Function, threshold.Function)
+
+	cr.Passed = len(cr.Violations) == 0
+	return cr
+}
+
+func checkMetric(cr *CheckResult, entry, metric string, m *Metric, threshold *float64) {
+	if threshold == nil {
+		return
+	}
+	if m == nil {
+		cr.Skipped = append(cr.Skipped, SkippedThreshold{Entry: entry, Metric: metric})
+		return
 	}
 
 	pct := m.Pct()
 	if pct < *threshold {
-		violations = append(violations, Violation{
+		cr.Violations = append(cr.Violations, Violation{
 			Entry:    entry,
 			Metric:   metric,
 			Actual:   pct,
 			Required: *threshold,
 		})
 	}
-
-	return violations
 }
 
 func FormatViolation(v Violation) string {
