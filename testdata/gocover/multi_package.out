@@ -1,0 +1,5 @@
+mode: count
+github.com/example/pkg/a.go:5.20,7.2 1 5
+github.com/example/pkg/a.go:9.30,11.2 2 0
+github.com/example/pkg/b.go:3.15,6.2 3 1
+github.com/example/pkg/b.go:8.25,10.2 1 3

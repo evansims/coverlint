@@ -1,0 +1,5 @@
+mode: set
+github.com/example/pkg/main.go:10.30,12.2 1 1
+github.com/example/pkg/main.go:14.40,16.2 1 0
+github.com/example/pkg/main.go:18.25,22.2 3 1
+github.com/example/pkg/main.go:24.30,26.2 1 0
