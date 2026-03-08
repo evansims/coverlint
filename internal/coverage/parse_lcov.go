@@ -136,10 +136,10 @@ func parseLcov(data []byte) (*CoverageResult, error) {
 		Line:  &Metric{Hit: lineHit, Total: lineFnd},
 		Files: files,
 	}
-	if hasBranch {
+	if hasBranch && branchFnd > 0 {
 		result.Branch = &Metric{Hit: branchHit, Total: branchFnd}
 	}
-	if hasFunc {
+	if hasFunc && funcFnd > 0 {
 		result.Function = &Metric{Hit: funcHit, Total: funcFnd}
 	}
 

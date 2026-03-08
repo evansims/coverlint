@@ -37,6 +37,13 @@ func TestParseLcov(t *testing.T) {
 			wantFunction: &Metric{Hit: 4, Total: 5},
 		},
 		{
+			name:         "zero branch totals treated as no branch data",
+			fixture:      "lcov/zero_branches.info",
+			wantLine:     &Metric{Hit: 4, Total: 4},
+			wantBranch:   nil,
+			wantFunction: &Metric{Hit: 2, Total: 2},
+		},
+		{
 			name:    "empty file",
 			fixture: "lcov/empty.info",
 			wantErr: true,
