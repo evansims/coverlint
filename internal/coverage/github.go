@@ -43,8 +43,8 @@ func WriteJobSummary(results []EntryResult) (err error) {
 		branch := fmtPct(r.Branch)
 		function := fmtPct(r.Function)
 
-		sb.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s |\n",
-			r.Name, line, branch, function, status))
+		fmt.Fprintf(&sb, "| %s | %s | %s | %s | %s |\n",
+			r.Name, line, branch, function, status)
 	}
 	sb.WriteString("\n")
 
@@ -83,13 +83,17 @@ func WriteOutputs(passed bool, results []EntryResult) (err error) {
 		}
 	}()
 
-	fmt.Fprintf(f, "passed=%v\n", passed)
+	if _, err = fmt.Fprintf(f, "passed=%v\n", passed); err != nil {
+		return fmt.Errorf("writing passed output: %w", err)
+	}
 
 	resultsJSON, err := json.Marshal(results)
 	if err != nil {
 		return fmt.Errorf("marshaling results: %w", err)
 	}
-	fmt.Fprintf(f, "results=%s\n", string(resultsJSON))
+	if _, err = fmt.Fprintf(f, "results=%s\n", string(resultsJSON)); err != nil {
+		return fmt.Errorf("writing results output: %w", err)
+	}
 
 	return nil
 }
