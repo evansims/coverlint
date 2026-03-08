@@ -192,7 +192,7 @@ jobs:
 
       - name: Generate coverage
         working-directory: testdata/projects/rust
-        run: cargo llvm-cov --lcov --branch --output-path lcov.info
+        run: cargo llvm-cov --lcov --output-path lcov.info
 
       - name: Run coverlint
         env:
