@@ -22,7 +22,7 @@ func EmitAnnotation(level, message string) {
 }
 
 // WriteJobSummary writes a markdown coverage table to $GITHUB_STEP_SUMMARY.
-func WriteJobSummary(results []EntryResult) error {
+func WriteJobSummary(results []EntryResult) (err error) {
 	summaryPath := os.Getenv("GITHUB_STEP_SUMMARY")
 	if summaryPath == "" {
 		return nil // not running in GitHub Actions
@@ -52,7 +52,11 @@ func WriteJobSummary(results []EntryResult) error {
 	if err != nil {
 		return fmt.Errorf("opening step summary file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("closing step summary file: %w", cerr)
+		}
+	}()
 
 	_, err = f.WriteString(sb.String())
 	if err != nil {
@@ -63,7 +67,7 @@ func WriteJobSummary(results []EntryResult) error {
 }
 
 // WriteOutputs writes action outputs to $GITHUB_OUTPUT.
-func WriteOutputs(passed bool, results []EntryResult) error {
+func WriteOutputs(passed bool, results []EntryResult) (err error) {
 	outputPath := os.Getenv("GITHUB_OUTPUT")
 	if outputPath == "" {
 		return nil
@@ -73,7 +77,11 @@ func WriteOutputs(passed bool, results []EntryResult) error {
 	if err != nil {
 		return fmt.Errorf("opening output file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("closing output file: %w", cerr)
+		}
+	}()
 
 	fmt.Fprintf(f, "passed=%v\n", passed)
 
