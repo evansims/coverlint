@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "coverage": [
+    {
+      "name": "app",
+      "path": "lcov.info",
+      "format": "lcov",
+      "threshold": {
+        "line": 50
+      }
+    }
+  ]
+}
