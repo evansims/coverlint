@@ -1,0 +1,17 @@
+TN:test
+SF:/src/a.ts
+FNF:2
+FNH:2
+BRF:4
+BRH:3
+LF:10
+LH:8
+end_of_record
+SF:/src/b.ts
+FNF:3
+FNH:1
+BRF:6
+BRH:4
+LF:20
+LH:15
+end_of_record
