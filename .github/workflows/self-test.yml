@@ -1,0 +1,47 @@
+name: Self Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests with coverage
+        run: go test -coverprofile=cover.out ./...
+
+      - name: Build coverage binary
+        run: go build -o coverage-bin ./cmd/coverage
+
+      - name: Create test config
+        run: |
+          cat > coverage.json <<'EOF'
+          {
+            "version": 1,
+            "coverage": [
+              {
+                "name": "coverage-action",
+                "path": "cover.out",
+                "format": "gocover",
+                "threshold": {
+                  "line": 70
+                }
+              }
+            ]
+          }
+          EOF
+
+      - name: Run coverage check
+        env:
+          INPUT_CONFIG: coverage.json
+          INPUT_WORKING-DIRECTORY: "."
+          INPUT_FAIL-ON-ERROR: "true"
+        run: ./coverage-bin
