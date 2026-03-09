@@ -366,16 +366,14 @@ func TestReadCoverageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer func() { _ = fh.Close() }()
 		// Seek past max size to make a sparse file
 		if _, err := fh.Seek(maxCoverageFileSize+1, 0); err != nil {
-			fh.Close()
 			t.Fatal(err)
 		}
 		if _, err := fh.Write([]byte{0}); err != nil {
-			fh.Close()
 			t.Fatal(err)
 		}
-		fh.Close()
 
 		_, err = readCoverageFile(f)
 		if err == nil {
