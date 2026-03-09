@@ -90,9 +90,13 @@ runs:
   steps:
     - name: Download coverlint binary
       shell: bash
+      env:
+        RUNNER_OS_INPUT: ${{ runner.os }}
+        RUNNER_ARCH_INPUT: ${{ runner.arch }}
+        ACTION_REF: ${{ github.action_ref }}
       run: |
-        os="${{ runner.os }}"
-        arch="${{ runner.arch }}"
+        os="$RUNNER_OS_INPUT"
+        arch="$RUNNER_ARCH_INPUT"
 
         case "$os" in
           macOS)  os="darwin" ;;
@@ -105,7 +109,7 @@ runs:
           ARM64) arch="arm64" ;;
         esac
 
-        version="${{ github.action_ref }}"
+        version="$ACTION_REF"
         repo="evansims/coverlint"
         binary="coverlint"
         ext="tar.gz"
@@ -127,7 +131,8 @@ runs:
         elif command -v shasum &>/dev/null; then
           grep "${archive}" checksums.txt | shasum -a 256 --check
         else
-          echo "::warning::No sha256sum or shasum available — skipping checksum verification"
+          echo "::error::No sha256sum or shasum available — cannot verify checksum"
+          exit 1
         fi
 
         if [[ "$ext" == "zip" ]]; then

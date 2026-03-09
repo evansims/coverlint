@@ -3,31 +3,55 @@ name: Integration Tests
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-coverlint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version-file: go.mod
       - run: go build -o coverlint ./cmd/coverlint
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: coverlint-binary
           path: coverlint
+          retention-days: 1
 
   test-gocover:
     needs: build-coverlint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -45,15 +69,77 @@ jobs:
           INPUT_FAIL-ON-ERROR: "true"
         run: ./coverlint
 
+  test-auto-detect:
+    needs: build-coverlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+        with:
+          name: coverlint-binary
+      - run: chmod +x coverlint
+
+      - name: Generate coverage
+        working-directory: testdata/projects/go
+        run: go test -coverprofile=cover.out ./...
+
+      - name: Run coverlint without explicit format
+        env:
+          INPUT_PATH: cover.out
+          INPUT_MIN-LINE: "100"
+          INPUT_WORKING-DIRECTORY: testdata/projects/go
+          INPUT_FAIL-ON-ERROR: "true"
+        run: ./coverlint
+
+  test-failure-detection:
+    needs: build-coverlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+        with:
+          name: coverlint-binary
+      - run: chmod +x coverlint
+
+      - name: Create low-coverage LCOV report
+        run: |
+          mkdir -p /tmp/failtest
+          printf 'SF:example.js\nDA:1,1\nDA:2,0\nDA:3,0\nDA:4,0\nDA:5,0\nLF:5\nLH:1\nend_of_record\n' > /tmp/failtest/lcov.info
+
+      - name: Verify coverlint detects threshold failure
+        env:
+          INPUT_PATH: lcov.info
+          INPUT_FORMAT: lcov
+          INPUT_MIN-LINE: "90"
+          INPUT_WORKING-DIRECTORY: /tmp/failtest
+          INPUT_FAIL-ON-ERROR: "true"
+        run: |
+          if ./coverlint; then
+            echo "ERROR: coverlint should have failed but exited 0"
+            exit 1
+          fi
+          echo "coverlint correctly detected threshold failure"
+
   test-lcov-node:
     needs: build-coverlint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: "22"
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -79,18 +165,21 @@ jobs:
   test-cobertura-python:
     needs: build-coverlint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
 
       - name: Install dependencies
-        run: pip install pytest pytest-cov
+        run: pip install pytest==9.0.2 pytest-cov==7.0.0
 
       - name: Generate coverage
         working-directory: testdata/projects/python
@@ -109,13 +198,16 @@ jobs:
   test-clover-php:
     needs: build-coverlint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2
         with:
           php-version: "8.4"
           coverage: xdebug
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -144,14 +236,17 @@ jobs:
   test-jacoco-java:
     needs: build-coverlint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
         with:
           distribution: temurin
           java-version: "21"
-      - uses: gradle/actions/setup-gradle@v5
-      - uses: actions/download-artifact@v8
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -174,18 +269,21 @@ jobs:
   test-monorepo:
     needs: build-coverlint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: "22"
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -203,7 +301,7 @@ jobs:
         run: npm test
 
       - name: Install Python dependencies
-        run: pip install pytest pytest-cov
+        run: pip install pytest==9.0.2 pytest-cov==7.0.0
 
       - name: Generate Python coverage
         working-directory: testdata/projects/monorepo/python-service
@@ -221,13 +319,16 @@ jobs:
   test-lcov-rust:
     needs: build-coverlint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
         with:
           components: llvm-tools-preview
-      - run: cargo install cargo-llvm-cov
-      - uses: actions/download-artifact@v8
+      - run: cargo install cargo-llvm-cov --version 0.8.4
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
