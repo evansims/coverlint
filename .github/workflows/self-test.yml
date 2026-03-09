@@ -6,8 +6,13 @@ on:
   pull_request:
 
 jobs:
-  self-test:
+  test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      badge-svg: ${{ steps.coverage.outputs.badge-svg }}
+      badge-json: ${{ steps.coverage.outputs.badge-json }}
     steps:
       - uses: actions/checkout@v6
 
@@ -22,6 +27,7 @@ jobs:
         run: go build -o coverlint-bin ./cmd/coverlint
 
       - name: Run coverage check
+        id: coverage
         env:
           INPUT_PATH: cover.out
           INPUT_FORMAT: gocover
@@ -29,3 +35,43 @@ jobs:
           INPUT_WORKING-DIRECTORY: "."
           INPUT_FAIL-ON-ERROR: "true"
         run: ./coverlint-bin
+
+  update-badges:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Push coverage badges
+        env:
+          BADGE_SVG: ${{ needs.test.outputs.badge-svg }}
+          BADGE_JSON: ${{ needs.test.outputs.badge-json }}
+        run: |
+          # Save badge files to a temp location
+          tmpdir=$(mktemp -d)
+          printf '%s' "$BADGE_SVG" > "$tmpdir/coverage.svg"
+          printf '%s' "$BADGE_JSON" > "$tmpdir/coverage.json"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Switch to badges branch (create orphan if it doesn't exist)
+          if git ls-remote --exit-code origin badges &>/dev/null; then
+            git fetch origin badges
+            git checkout badges
+          else
+            git checkout --orphan badges
+            git rm -rf . 2>/dev/null || true
+          fi
+
+          # Copy badge files into the branch
+          cp "$tmpdir/coverage.svg" .
+          cp "$tmpdir/coverage.json" .
+
+          git add coverage.svg coverage.json
+          git diff --cached --quiet && echo "No badge changes" && exit 0
+          git commit -m "Update coverage badges"
+          git push origin badges

@@ -44,6 +44,12 @@ outputs:
   passed:
     description: 'Whether all thresholds were met (true or false)'
     value: ${{ steps.run.outputs.passed }}
+  badge-svg:
+    description: 'SVG badge showing line coverage percentage'
+    value: ${{ steps.run.outputs.badge-svg }}
+  badge-json:
+    description: 'Shields.io endpoint JSON for line coverage badge'
+    value: ${{ steps.run.outputs.badge-json }}
 
 runs:
   using: "composite"

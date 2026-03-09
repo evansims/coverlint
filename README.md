@@ -1,5 +1,7 @@
 # Coverlint
 
+![Coverage](https://raw.githubusercontent.com/evansims/coverlint/badges/coverage.svg)
+
 A self-contained GitHub Action that parses coverage reports, enforces thresholds, and reports results as GitHub Actions annotations and job summaries. No external service dependencies, repo secrets or other headaches to worry about — just pass/fail.
 
 ## Supported Formats
@@ -58,10 +60,12 @@ When `path` is omitted, coverlint searches for coverage reports in common defaul
 
 ### Outputs
 
-| Output    | Description                              |
-| --------- | ---------------------------------------- |
-| `passed`  | `true` or `false`                        |
-| `results` | JSON array of per-entry coverage results |
+| Output       | Description                                      |
+| ------------ | ------------------------------------------------ |
+| `passed`     | `true` or `false`                                |
+| `results`    | JSON array of per-entry coverage results         |
+| `badge-svg`  | SVG badge showing line coverage percentage       |
+| `badge-json` | Shields.io endpoint JSON for line coverage badge |
 
 The `results` output is a JSON array you can parse in subsequent steps:
 
@@ -231,6 +235,84 @@ When both `format` and `path` are omitted, coverlint discovers files from known 
 - uses: evansims/coverlint@v1
   with:
     threshold-line: 80
+```
+
+## Coverage Badges
+
+Coverlint generates badge outputs that you can use to display live coverage in your README. No external services or secrets required.
+
+Use a two-job workflow to follow the principle of least privilege — the test job runs with read-only permissions on every push and PR, while a separate badge job only runs on `main` with the `contents: write` permission it needs:
+
+```yaml
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      badge-svg: ${{ steps.coverage.outputs.badge-svg }}
+    steps:
+      - uses: actions/checkout@v6
+
+      # ... your test steps ...
+
+      - uses: evansims/coverlint@v1
+        id: coverage
+        with:
+          format: gocover
+          threshold-line: 80
+
+  update-badges:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Push coverage badge
+        env:
+          BADGE_SVG: ${{ needs.test.outputs.badge-svg }}
+        run: |
+          tmpdir=$(mktemp -d)
+          printf '%s' "$BADGE_SVG" > "$tmpdir/coverage.svg"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code origin badges &>/dev/null; then
+            git fetch origin badges
+            git checkout badges
+          else
+            git checkout --orphan badges
+            git rm -rf . 2>/dev/null || true
+          fi
+
+          cp "$tmpdir/coverage.svg" .
+          git add coverage.svg
+          git diff --cached --quiet && exit 0
+          git commit -m "Update coverage badge"
+          git push origin badges
+```
+
+Then reference the badge in your README:
+
+```markdown
+![Coverage](https://raw.githubusercontent.com/OWNER/REPO/badges/coverage.svg)
+```
+
+### Using shields.io instead
+
+If you prefer shields.io styling, write the `badge-json` output instead and use a shields.io endpoint badge:
+
+```markdown
+![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/badges/coverage.json)
 ```
 
 ## Contributing

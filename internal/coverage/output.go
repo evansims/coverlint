@@ -159,6 +159,7 @@ func WriteJobSummary(results []EntryResult, hasTotal bool, suggestions []Suggest
 
 // WriteOutputs writes action outputs to $GITHUB_OUTPUT.
 // Uses multiline delimiter syntax for the results value to prevent injection.
+// Badge outputs are generated from the last entry's line coverage (the total).
 func WriteOutputs(passed bool, results []EntryResult) (err error) {
 	outputPath := os.Getenv("GITHUB_OUTPUT")
 	if outputPath == "" {
@@ -188,6 +189,23 @@ func WriteOutputs(passed bool, results []EntryResult) (err error) {
 	delimiter := "COVERLINT_RESULTS_EOF"
 	if _, err = fmt.Fprintf(f, "results<<%s\n%s\n%s\n", delimiter, string(resultsJSON), delimiter); err != nil {
 		return fmt.Errorf("writing results output: %w", err)
+	}
+
+	// Generate badge outputs from the total/last entry's line coverage
+	if len(results) > 0 {
+		total := results[len(results)-1]
+		if total.Line != nil {
+			svgDelimiter := "COVERLINT_SVG_EOF"
+			svg := GenerateBadgeSVG(*total.Line)
+			if _, err = fmt.Fprintf(f, "badge-svg<<%s\n%s\n%s\n", svgDelimiter, svg, svgDelimiter); err != nil {
+				return fmt.Errorf("writing badge-svg output: %w", err)
+			}
+
+			badgeJSON := GenerateBadgeJSON(*total.Line)
+			if _, err = fmt.Fprintf(f, "badge-json=%s\n", badgeJSON); err != nil {
+				return fmt.Errorf("writing badge-json output: %w", err)
+			}
+		}
 	}
 
 	return nil
