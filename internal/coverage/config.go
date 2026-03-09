@@ -17,14 +17,6 @@ type Input struct {
 	Threshold   Threshold
 }
 
-var validFormats = map[string]bool{
-	"lcov":      true,
-	"gocover":   true,
-	"cobertura": true,
-	"clover":    true,
-	"jacoco":    true,
-}
-
 // ParseInputs reads action inputs from INPUT_* environment variables and validates them.
 func ParseInputs() (*Input, error) {
 	inp := &Input{
@@ -44,7 +36,7 @@ func ParseInputs() (*Input, error) {
 		if f == "" {
 			continue
 		}
-		if !validFormats[f] {
+		if _, ok := parsers[f]; !ok {
 			return nil, fmt.Errorf("input validation: format %q is not valid (valid: lcov, gocover, cobertura, clover, jacoco)", f)
 		}
 		inp.Formats = append(inp.Formats, f)
@@ -65,10 +57,6 @@ func ParseInputs() (*Input, error) {
 	function, err := parseOptionalFloat(os.Getenv("INPUT_THRESHOLD-FUNCTION"))
 	if err != nil {
 		return nil, fmt.Errorf("input validation: threshold-function: %w", err)
-	}
-
-	if line == nil && branch == nil && function == nil {
-		return nil, fmt.Errorf("input validation: at least one threshold (threshold-line, threshold-branch, threshold-function) is required")
 	}
 
 	inp.Threshold = Threshold{Line: line, Branch: branch, Function: function}

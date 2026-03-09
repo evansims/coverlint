@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/evansims/coverlint/internal/coverage"
@@ -9,7 +8,7 @@ import (
 
 func main() {
 	if err := coverage.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "::error::%s\n", err)
+		coverage.EmitAnnotation("error", err.Error())
 		os.Exit(1)
 	}
 }

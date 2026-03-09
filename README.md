@@ -1,8 +1,6 @@
 # Coverlint
 
-A self-contained GitHub Action that enforces coverage thresholds on pull requests. Parses coverage reports, compares against configurable thresholds, and reports results as GitHub Actions annotations and job summaries.
-
-No external services. No GitHub API tokens. No PR comments. Just pass/fail.
+A self-contained GitHub Action that parses coverage reports, enforces thresholds, and reports results as GitHub Actions annotations and job summaries. No external service dependencies, repo secrets or other headaches to worry about — just pass/fail.
 
 ## Supported Formats
 
@@ -21,29 +19,30 @@ Add to your workflow after your test step:
 ```yaml
 - uses: evansims/coverlint@v1
   with:
-    path: cover.out
     format: gocover
     threshold-line: 80
 ```
 
 ### Inputs
 
-| Input                | Default | Required | Description                                                |
-| -------------------- | ------- | -------- | ---------------------------------------------------------- |
-| `format`             |         | yes      | One of: `lcov`, `gocover`, `cobertura`, `clover`, `jacoco` |
-| `path`               |         | no       | Path to coverage report file (auto-discovered if omitted)  |
-| `threshold-line`     |         | no\*     | Minimum line coverage percentage (0-100)                   |
-| `threshold-branch`   |         | no\*     | Minimum branch coverage percentage (0-100)                 |
-| `threshold-function` |         | no\*     | Minimum function coverage percentage (0-100)               |
-| `working-directory`  | `.`     | no       | Working directory for resolving relative paths             |
-| `fail-on-error`      | `true`  | no       | Fail the action when thresholds are not met                |
-| `suggestions`        | `true`  | no       | Show top coverage improvement opportunities in job summary |
+| Input                | Default | Required | Description                                                                                      |
+| -------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `format`             |         | yes      | Coverage format(s). Comma-separated for multiple (e.g., `gocover,lcov,cobertura`)                |
+| `path`               |         | no       | Path(s) to coverage files. Supports globs and comma-separated values. Auto-discovered if omitted |
+| `threshold-line`     |         | no       | Minimum line coverage percentage (0-100)                                                         |
+| `threshold-branch`   |         | no       | Minimum branch coverage percentage (0-100)                                                       |
+| `threshold-function` |         | no       | Minimum function coverage percentage (0-100)                                                     |
+| `working-directory`  | `.`     | no       | Working directory for resolving relative paths                                                   |
+| `fail-on-error`      | `true`  | no       | Fail the action when thresholds are not met                                                      |
+| `suggestions`        | `true`  | no       | Show top coverage improvement opportunities in job summary                                       |
 
-\*At least one threshold is required.
+When no thresholds are configured, coverlint reports coverage metrics without enforcing any minimums. This is useful for analytics and tracking coverage trends.
+
+If a threshold is configured but the coverage format doesn't report that metric (e.g., `threshold-branch` with `gocover`), the threshold is skipped and a notice annotation is emitted.
 
 ### Auto-Discovery
 
-When `path` is omitted, coverlint searches for a coverage report in common default locations based on the `format`:
+When `path` is omitted, coverlint searches for coverage reports in common default locations based on the `format`:
 
 | Format      | Searched Paths                                                                                  |
 | ----------- | ----------------------------------------------------------------------------------------------- |
@@ -60,8 +59,6 @@ When `path` is omitted, coverlint searches for a coverage report in common defau
 | `passed`  | `true` or `false`                        |
 | `results` | JSON array of per-entry coverage results |
 
-If a threshold is configured but the coverage format doesn't report that metric (e.g., `threshold-branch` with `gocover`), the threshold is skipped and a notice annotation is emitted.
-
 ## Examples
 
 ### Go
@@ -71,7 +68,6 @@ If a threshold is configured but the coverage format doesn't report that metric 
 
 - uses: evansims/coverlint@v1
   with:
-    path: cover.out
     format: gocover
     threshold-line: 80
 ```
@@ -142,24 +138,46 @@ If a threshold is configured but the coverage format doesn't report that metric 
     threshold-branch: 70
 ```
 
-### Multiple Reports
+### Monorepo (Multiple Formats)
 
-Use multiple steps to check different coverage reports:
+Use comma-separated `format` and `path` values to combine coverage from multiple languages in a single step. The job summary shows per-format breakdowns with a combined total.
 
 ```yaml
 - uses: evansims/coverlint@v1
   with:
-    path: cover.out
+    format: gocover,lcov,cobertura
+    path: "go-service/cover.out, node-service/coverage/lcov.info, python-service/coverage.xml"
+    threshold-line: 80
+```
+
+### Multiple Independent Checks
+
+Use separate steps when different parts of your project need different thresholds:
+
+```yaml
+- uses: evansims/coverlint@v1
+  with:
     format: gocover
+    path: cover.out
     threshold-line: 80
 
 - uses: evansims/coverlint@v1
   with:
-    path: coverage/lcov.info
     format: lcov
+    path: coverage/lcov.info
     threshold-line: 85
     threshold-branch: 70
     threshold-function: 80
+```
+
+### Analytics Only (No Thresholds)
+
+Report coverage metrics in the job summary without enforcing any minimums:
+
+```yaml
+- uses: evansims/coverlint@v1
+  with:
+    format: gocover
 ```
 
 ## Contributing

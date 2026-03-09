@@ -82,12 +82,12 @@ func TestParseInputs(t *testing.T) {
 			wantErr: "not valid",
 		},
 		{
-			name: "no thresholds",
+			name: "no thresholds is valid",
 			env: map[string]string{
 				"INPUT_PATH":   "cover.out",
 				"INPUT_FORMAT": "gocover",
 			},
-			wantErr: "at least one threshold",
+			wantFormats: []string{"gocover"},
 		},
 		{
 			name: "negative threshold",

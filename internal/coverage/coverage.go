@@ -2,6 +2,7 @@ package coverage
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,15 +12,23 @@ import (
 const maxCoverageFileSize = 50 * 1024 * 1024
 
 // readCoverageFile reads a coverage file with size validation.
+// Uses a single file handle to avoid TOCTOU between size check and read.
 func readCoverageFile(path string) ([]byte, error) {
-	info, err := os.Stat(path)
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading coverage file %q: %w", path, err)
+	}
+	defer f.Close()
+
+	info, err := f.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("reading coverage file %q: %w", path, err)
 	}
 	if info.Size() > maxCoverageFileSize {
 		return nil, fmt.Errorf("coverage file %q exceeds maximum size of %d bytes (%d bytes)", path, maxCoverageFileSize, info.Size())
 	}
-	data, err := os.ReadFile(path)
+
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("reading coverage file %q: %w", path, err)
 	}
@@ -111,29 +120,19 @@ func Run() error {
 		allParsed = append(allParsed, fr.Results...)
 
 		if multiFormat {
-			// Merge within this format if multiple files
-			var formatMerged *CoverageResult
-			if len(fr.Results) == 1 {
-				formatMerged = fr.Results[0]
-			} else {
-				formatMerged = MergeResults(fr.Results)
-			}
-
-			entry := buildEntryResult(fr.Format, formatMerged)
+			entry := buildEntryResult(fr.Format, MergeResults(fr.Results))
 			entry.Passed = true // per-format rows don't show pass/fail
 			entryResults = append(entryResults, entry)
 		}
 	}
 
 	// Merge all results for the combined/total result
-	var combined *CoverageResult
-	if len(allParsed) == 1 {
-		combined = allParsed[0]
-	} else {
-		combined = MergeResults(allParsed)
+	combined := MergeResults(allParsed)
+	if len(allParsed) > 1 {
 		EmitAnnotation("notice", fmt.Sprintf("merged %d coverage reports", len(allParsed)))
 	}
 	cr := CheckThresholds(combined, &inp.Threshold)
+	hasThresholds := inp.Threshold.Line != nil || inp.Threshold.Branch != nil || inp.Threshold.Function != nil
 
 	// Single-format: label the row with the format name; multi-format: "Total"
 	var totalLabel string
@@ -181,8 +180,12 @@ func Run() error {
 		if totalEntry.Function != nil {
 			parts = append(parts, fmt.Sprintf("function %.1f%%", *totalEntry.Function))
 		}
-		msg := fmt.Sprintf("coverage: %s — all thresholds met", strings.Join(parts, ", "))
-		EmitAnnotation("notice", msg)
+		if hasThresholds && len(parts) > 0 {
+			msg := fmt.Sprintf("coverage: %s — all thresholds met", strings.Join(parts, ", "))
+			EmitAnnotation("notice", msg)
+		} else if len(parts) > 0 {
+			EmitAnnotation("notice", fmt.Sprintf("coverage: %s", strings.Join(parts, ", ")))
+		}
 	}
 
 	// Compute suggestions if enabled

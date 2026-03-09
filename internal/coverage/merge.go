@@ -165,10 +165,10 @@ func computeLineBasedSummary(merged map[string]*FileLineDetail) *CoverageResult 
 	if totalLines > 0 {
 		result.Line = &Metric{Hit: hitLines, Total: totalLines}
 	}
-	if hasBranches && totalBranches > 0 {
+	if hasBranches {
 		result.Branch = &Metric{Hit: hitBranches, Total: totalBranches}
 	}
-	if hasFuncs && totalFuncs > 0 {
+	if hasFuncs {
 		result.Function = &Metric{Hit: hitFuncs, Total: totalFuncs}
 	}
 
