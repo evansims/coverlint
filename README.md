@@ -16,92 +16,32 @@ A self-contained GitHub Action that parses coverage reports, enforces thresholds
 
 ## Usage
 
+Add coverlint after your test step. With no inputs, it auto-detects the format, finds the report, and prints coverage without failing:
+
+```yaml
+- uses: evansims/coverlint@v1
+```
+
+To enforce a minimum, set `min-coverage` — a weighted score across line, branch, and function coverage:
+
 ```yaml
 - uses: evansims/coverlint@v1
   with:
-    format: gocover # recommended; auto-detected if omitted
+    min-coverage: 80
+```
+
+Setting `format` explicitly is faster and avoids guesswork when files share names (e.g. `coverage.xml` could be Cobertura or Clover):
+
+```yaml
+- uses: evansims/coverlint@v1
+  with:
+    format: lcov
     min-coverage: 80
 ```
 
 Releases use [immutable tags](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases). [Pin actions by commit SHA](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) and use [Dependabot](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/about-dependabot-version-updates) to keep them current.
 
-### Inputs
-
-| Input               | Description                                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------------------------ |
-| `format`            | Coverage format(s), one per line or comma-separated. Auto-detected if omitted                          |
-| `path`              | Path(s) to coverage files, one per line or comma-separated. Supports globs. Auto-discovered if omitted |
-| `min-coverage`      | Minimum weighted coverage score (0-100), computed from line, branch, and function coverage             |
-| `min-line`          | Minimum line coverage (0-100), checked independently of the weighted score                             |
-| `min-branch`        | Minimum branch coverage (0-100), checked independently                                                 |
-| `min-function`      | Minimum function coverage (0-100), checked independently                                               |
-| `weight-line`       | Relative weight for line coverage in score (default: `50`)                                             |
-| `weight-branch`     | Relative weight for branch coverage in score (default: `30`)                                           |
-| `weight-function`   | Relative weight for function coverage in score (default: `20`)                                         |
-| `working-directory` | Working directory for resolving relative paths (default: `.`)                                          |
-| `fail-on-error`     | Fail the action when minimums are not met (default: `true`)                                            |
-| `suggestions`       | Show top coverage improvement opportunities in job summary (default: `true`)                           |
-
-`min-coverage` checks a weighted score computed from line, branch, and function coverage (default weights: 50/30/20). If a metric isn't reported by your format (e.g. `gocover` doesn't report branch), its weight redistributes proportionally. Use `min-line`, `min-branch`, or `min-function` to enforce limits on individual metrics — they're checked independently of the score.
-
-Without minimums, coverlint reports coverage without failing — useful for tracking trends. If you set a minimum that your coverage format doesn't support (e.g. `min-branch` with `gocover`), it's skipped with a notice.
-
-### Auto-Detection and Discovery
-
-You don't need to specify `format` or `path` — coverlint can figure both out. It tries each parser until one succeeds, and looks for reports in common locations:
-
-| Format      | Searched Paths                                                                                  |
-| ----------- | ----------------------------------------------------------------------------------------------- |
-| `lcov`      | `coverage/lcov.info`, `lcov.info`, `coverage.lcov`                                              |
-| `gocover`   | `cover.out`, `coverage.out`, `c.out`                                                            |
-| `cobertura` | `coverage.xml`, `cobertura.xml`, `cobertura-coverage.xml`                                       |
-| `clover`    | `coverage.xml`, `clover.xml`                                                                    |
-| `jacoco`    | `build/reports/jacoco/test/jacocoTestReport.xml`, `target/site/jacoco/jacoco.xml`, `jacoco.xml` |
-
-Setting `format` explicitly is still a good idea — it's faster and avoids guesswork when files share names (e.g. `coverage.xml` could be Cobertura or Clover).
-
-### Outputs
-
-| Output       | Description                                                      |
-| ------------ | ---------------------------------------------------------------- |
-| `passed`     | Whether all minimums were met (`true` or `false`)                |
-| `results`    | Coverage data as JSON (see below)                                |
-| `badge-svg`  | Ready-to-use SVG coverage badge                                  |
-| `badge-json` | Coverage badge as [shields.io](https://shields.io) endpoint JSON |
-
-The `results` JSON has one entry per format, each with a weighted `score` and available metrics. Multi-format runs include a `Total`:
-
-```json
-[
-  { "name": "gocover", "score": 85.0, "line": 85.0, "passed": true },
-  {
-    "name": "lcov",
-    "score": 77.4,
-    "line": 78.3,
-    "branch": 65.2,
-    "function": 90.1,
-    "passed": true
-  },
-  {
-    "name": "Total",
-    "score": 79.2,
-    "line": 81.1,
-    "branch": 65.2,
-    "function": 90.1,
-    "passed": true
-  }
-]
-```
-
-Use `fromJSON()` to read values in later steps:
-
-```yaml
-- run: echo "Line coverage is ${{ fromJSON(steps.coverage.outputs.results)[0].line }}%"
-```
-
-## Examples
-
-### Quick Reference
+## Quick Start by Language
 
 | Language              | Test Command                                         | Format      | Path                                             |
 | --------------------- | ---------------------------------------------------- | ----------- | ------------------------------------------------ |
@@ -112,6 +52,9 @@ Use `fromJSON()` to read values in later steps:
 | PHP                   | `vendor/bin/phpunit --coverage-clover=coverage.xml`  | `clover`    | `coverage.xml`                                   |
 | Java (Gradle)         | `./gradlew test jacocoTestReport`                    | `jacoco`    | `build/reports/jacoco/test/jacocoTestReport.xml` |
 
+<details>
+<summary><strong>Go</strong></summary>
+
 ```yaml
 - run: go test -coverprofile=cover.out ./...
 
@@ -121,7 +64,140 @@ Use `fromJSON()` to read values in later steps:
     min-coverage: 80
 ```
 
-### Monorepo
+</details>
+
+<details>
+<summary><strong>Rust</strong></summary>
+
+```yaml
+- run: cargo llvm-cov --lcov --output-path lcov.info
+
+- uses: evansims/coverlint@v1
+  with:
+    format: lcov
+    min-coverage: 80
+```
+
+</details>
+
+<details>
+<summary><strong>TypeScript / JavaScript</strong></summary>
+
+```yaml
+- run: npx vitest run --coverage --coverage.reporter=lcov
+
+- uses: evansims/coverlint@v1
+  with:
+    format: lcov
+    min-coverage: 80
+```
+
+</details>
+
+<details>
+<summary><strong>Python</strong></summary>
+
+```yaml
+- run: pytest --cov --cov-report=xml:coverage.xml
+
+- uses: evansims/coverlint@v1
+  with:
+    format: cobertura
+    min-coverage: 80
+```
+
+</details>
+
+<details>
+<summary><strong>PHP</strong></summary>
+
+```yaml
+- run: vendor/bin/phpunit --coverage-clover=coverage.xml
+
+- uses: evansims/coverlint@v1
+  with:
+    format: clover
+    min-coverage: 80
+```
+
+</details>
+
+<details>
+<summary><strong>Java (Gradle)</strong></summary>
+
+```yaml
+- run: ./gradlew test jacocoTestReport
+
+- uses: evansims/coverlint@v1
+  with:
+    format: jacoco
+    min-coverage: 80
+```
+
+</details>
+
+## Thresholds
+
+### Coverage Score
+
+`min-coverage` checks a weighted score computed from line, branch, and function coverage. The default weights are line 50, branch 30, function 20. If a metric isn't reported by your format (e.g. `gocover` doesn't report branch or function), its weight redistributes proportionally.
+
+```yaml
+- uses: evansims/coverlint@v1
+  with:
+    format: lcov
+    min-coverage: 80
+```
+
+Without any minimums, coverlint reports coverage without failing — useful for tracking trends before committing to a threshold.
+
+### Custom Weights
+
+Weights are relative — adjust them to match what matters to your project:
+
+```yaml
+- uses: evansims/coverlint@v1
+  with:
+    format: lcov
+    min-coverage: 80
+    weight-line: 100 # only line coverage counts toward the score
+    weight-branch: 0
+    weight-function: 0
+```
+
+### Per-Metric Floors
+
+Use `min-line`, `min-branch`, or `min-function` to enforce hard floors on individual metrics, checked independently of the weighted score. Combine them with `min-coverage` to set both an overall bar and individual limits:
+
+```yaml
+- uses: evansims/coverlint@v1
+  with:
+    format: lcov
+    min-coverage: 80
+    min-branch: 60 # fails if branch drops below 60%, even if the overall score passes
+```
+
+If you set a floor that your format doesn't support (e.g. `min-branch` with `gocover`), it's skipped with a notice.
+
+### Per-Area Thresholds
+
+Use separate steps when parts of your project need different bars:
+
+```yaml
+- uses: evansims/coverlint@v1
+  with:
+    format: gocover
+    path: cover.out
+    min-coverage: 80
+
+- uses: evansims/coverlint@v1
+  with:
+    format: lcov
+    path: coverage/lcov.info
+    min-coverage: 90
+```
+
+## Monorepo
 
 Combine coverage from multiple languages in one step — the job summary breaks down each format with a combined total:
 
@@ -139,48 +215,72 @@ Combine coverage from multiple languages in one step — the job summary breaks 
     min-coverage: 80
 ```
 
-### Different Minimums Per Metric
+## Auto-Detection and Discovery
 
-Use `min-coverage` for the overall bar and `min-*` for individual metrics that need their own limits:
+You don't need to specify `format` or `path` — coverlint can figure both out. It tries each parser until one succeeds, and looks for reports in common locations:
 
-```yaml
-- uses: evansims/coverlint@v1
-  with:
-    format: lcov
-    min-coverage: 80
-    min-branch: 60 # fails if branch drops below 60%, even if the overall score passes
+| Format      | Searched Paths                                                                                  |
+| ----------- | ----------------------------------------------------------------------------------------------- |
+| `lcov`      | `coverage/lcov.info`, `lcov.info`, `coverage.lcov`                                              |
+| `gocover`   | `cover.out`, `coverage.out`, `c.out`                                                            |
+| `cobertura` | `coverage.xml`, `cobertura.xml`, `cobertura-coverage.xml`                                       |
+| `clover`    | `coverage.xml`, `clover.xml`                                                                    |
+| `jacoco`    | `build/reports/jacoco/test/jacocoTestReport.xml`, `target/site/jacoco/jacoco.xml`, `jacoco.xml` |
+
+## Inputs
+
+| Input               | Description                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| `format`            | Coverage format(s), one per line or comma-separated. Auto-detected if omitted                          |
+| `path`              | Path(s) to coverage files, one per line or comma-separated. Supports globs. Auto-discovered if omitted |
+| `min-coverage`      | Minimum weighted coverage score (0-100), computed from line, branch, and function coverage             |
+| `min-line`          | Minimum line coverage (0-100), checked independently of the weighted score                             |
+| `min-branch`        | Minimum branch coverage (0-100), checked independently                                                 |
+| `min-function`      | Minimum function coverage (0-100), checked independently                                               |
+| `weight-line`       | Relative weight for line coverage in score (default: `50`)                                             |
+| `weight-branch`     | Relative weight for branch coverage in score (default: `30`)                                           |
+| `weight-function`   | Relative weight for function coverage in score (default: `20`)                                         |
+| `working-directory` | Working directory for resolving relative paths (default: `.`)                                          |
+| `fail-on-error`     | Fail the action when minimums are not met (default: `true`)                                            |
+| `suggestions`       | Show top coverage improvement opportunities in job summary (default: `true`)                           |
+
+## Outputs
+
+| Output       | Description                                                      |
+| ------------ | ---------------------------------------------------------------- |
+| `passed`     | Whether all minimums were met (`true` or `false`)                |
+| `results`    | Coverage data as JSON (see below)                                |
+| `badge-svg`  | Ready-to-use SVG coverage badge                                  |
+| `badge-json` | Coverage badge as [shields.io](https://shields.io) endpoint JSON |
+
+The `results` JSON has one entry per format, each with a weighted `score` and available metrics. Multi-format runs include a `Total`:
+
+```json
+[
+  { "name": "gocover", "score": 85, "line": 85, "passed": true },
+  {
+    "name": "lcov",
+    "score": 77,
+    "line": 78.3,
+    "branch": 65.2,
+    "function": 90.1,
+    "passed": true
+  },
+  {
+    "name": "Total",
+    "score": 79,
+    "line": 81.1,
+    "branch": 65.2,
+    "function": 90.1,
+    "passed": true
+  }
+]
 ```
 
-### Custom Score Weights
-
-The coverage score weights line (50), branch (30), and function (20) by default. Weights are relative — adjust them to match what matters to your project:
+Use `fromJSON()` to read values in later steps:
 
 ```yaml
-- uses: evansims/coverlint@v1
-  with:
-    format: lcov
-    min-coverage: 80
-    weight-line: 100 # only line coverage counts
-    weight-branch: 0
-    weight-function: 0
-```
-
-### Different Minimums Per Area
-
-Use separate steps when parts of your project need different bars:
-
-```yaml
-- uses: evansims/coverlint@v1
-  with:
-    format: gocover
-    path: cover.out
-    min-coverage: 80
-
-- uses: evansims/coverlint@v1
-  with:
-    format: lcov
-    path: coverage/lcov.info
-    min-coverage: 85
+- run: echo "Line coverage is ${{ fromJSON(steps.coverage.outputs.results)[0].line }}%"
 ```
 
 ## Coverage Badges
