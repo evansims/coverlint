@@ -170,4 +170,24 @@ func TestResolvePaths(t *testing.T) {
 			t.Errorf("error should mention not found: %v", err)
 		}
 	})
+
+	t.Run("rejects path traversal", func(t *testing.T) {
+		dir := t.TempDir()
+		// Create a file outside the workdir
+		if err := os.WriteFile(filepath.Join(dir, "cover.out"), []byte("mode: set\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		subDir := filepath.Join(dir, "subdir")
+		if err := os.Mkdir(subDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err := ResolvePaths("../cover.out", subDir)
+		if err == nil {
+			t.Fatal("expected error for path traversal, got nil")
+		}
+		if !strings.Contains(err.Error(), "escapes working directory") {
+			t.Errorf("error should mention escaping working directory: %v", err)
+		}
+	})
 }

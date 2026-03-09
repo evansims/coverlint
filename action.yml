@@ -70,17 +70,29 @@ runs:
         ext="tar.gz"
         if [[ "$os" == "windows" ]]; then ext="zip"; fi
 
-        url="https://github.com/${repo}/releases/download/${version}/${binary}_${os}_${arch}.${ext}"
+        archive="${binary}_${os}_${arch}.${ext}"
+        base_url="https://github.com/${repo}/releases/download/${version}"
 
-        echo "Downloading ${url}"
+        echo "Downloading ${base_url}/${archive}"
         tmpdir=$(mktemp -d)
         cd "$tmpdir"
 
-        if [[ "$ext" == "zip" ]]; then
-          curl -fsL "$url" -o archive.zip
-          unzip -q archive.zip
+        curl -fsL "${base_url}/${archive}" -o "${archive}"
+        curl -fsL "${base_url}/checksums.txt" -o checksums.txt
+
+        # Verify checksum before extracting
+        if command -v sha256sum &>/dev/null; then
+          sha256sum --check --ignore-missing checksums.txt
+        elif command -v shasum &>/dev/null; then
+          grep "${archive}" checksums.txt | shasum -a 256 --check
         else
-          curl -fsL "$url" | tar xzf -
+          echo "::warning::No sha256sum or shasum available — skipping checksum verification"
+        fi
+
+        if [[ "$ext" == "zip" ]]; then
+          unzip -q "${archive}"
+        else
+          tar xzf "${archive}"
         fi
 
         chmod +x "${binary}"*

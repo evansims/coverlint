@@ -60,6 +60,14 @@ func ParseInputs() (*Input, error) {
 		inp.Name = strings.Join(inp.Formats, ", ")
 	}
 
+	// Sanitize name to prevent injection via newlines or control characters
+	inp.Name = strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\r' {
+			return ' '
+		}
+		return r
+	}, inp.Name)
+
 	line, err := parseOptionalFloat(os.Getenv("INPUT_THRESHOLD-LINE"))
 	if err != nil {
 		return nil, fmt.Errorf("input validation: threshold-line: %w", err)

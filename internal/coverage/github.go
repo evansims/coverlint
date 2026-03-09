@@ -17,8 +17,34 @@ type EntryResult struct {
 }
 
 // EmitAnnotation writes a GitHub Actions workflow command to stdout.
+// Message is sanitized to prevent workflow command injection.
 func EmitAnnotation(level, message string) {
-	fmt.Printf("::%s::%s\n", level, message)
+	fmt.Printf("::%s::%s\n", level, sanitizeWorkflowCommand(message))
+}
+
+// sanitizeWorkflowCommand strips characters that could inject additional
+// GitHub Actions workflow commands into stdout.
+func sanitizeWorkflowCommand(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	s = strings.ReplaceAll(s, "::", ": :")
+	return s
+}
+
+// sanitizeOutputValue strips newlines from a value to prevent injection of
+// additional key=value pairs into GITHUB_OUTPUT.
+func sanitizeOutputValue(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	return s
+}
+
+// sanitizeMarkdown escapes characters that could break markdown table formatting.
+func sanitizeMarkdown(s string) string {
+	s = strings.ReplaceAll(s, "|", "\\|")
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	return s
 }
 
 // WriteJobSummary writes a markdown coverage table to $GITHUB_STEP_SUMMARY.
@@ -82,7 +108,7 @@ func WriteJobSummary(results []EntryResult, hasTotal bool, suggestions []Suggest
 			status = "**Fail**"
 		}
 
-		fmt.Fprintf(&sb, "| %s", r.Name)
+		fmt.Fprintf(&sb, "| %s", sanitizeMarkdown(r.Name))
 		if hasLine {
 			fmt.Fprintf(&sb, " | %s", fmtPct(r.Line))
 		}
@@ -102,7 +128,7 @@ func WriteJobSummary(results []EntryResult, hasTotal bool, suggestions []Suggest
 			status = "**Fail**"
 		}
 
-		fmt.Fprintf(&sb, "| **%s** ", totalRow.Name)
+		fmt.Fprintf(&sb, "| **%s** ", sanitizeMarkdown(totalRow.Name))
 		if hasLine {
 			fmt.Fprintf(&sb, "| **%s** ", fmtPct(totalRow.Line))
 		}
@@ -140,6 +166,7 @@ func WriteJobSummary(results []EntryResult, hasTotal bool, suggestions []Suggest
 }
 
 // WriteOutputs writes action outputs to $GITHUB_OUTPUT.
+// Uses multiline delimiter syntax for the results value to prevent injection.
 func WriteOutputs(passed bool, results []EntryResult) (err error) {
 	outputPath := os.Getenv("GITHUB_OUTPUT")
 	if outputPath == "" {
@@ -164,7 +191,10 @@ func WriteOutputs(passed bool, results []EntryResult) (err error) {
 	if err != nil {
 		return fmt.Errorf("marshaling results: %w", err)
 	}
-	if _, err = fmt.Fprintf(f, "results=%s\n", string(resultsJSON)); err != nil {
+
+	// Use multiline delimiter syntax to prevent output injection via crafted names
+	delimiter := "COVERLINT_RESULTS_EOF"
+	if _, err = fmt.Fprintf(f, "results<<%s\n%s\n%s\n", delimiter, string(resultsJSON), delimiter); err != nil {
 		return fmt.Errorf("writing results output: %w", err)
 	}
 

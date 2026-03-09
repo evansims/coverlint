@@ -7,6 +7,25 @@ import (
 	"strings"
 )
 
+// maxCoverageFileSize is the maximum allowed size for a coverage report file (50 MB).
+const maxCoverageFileSize = 50 * 1024 * 1024
+
+// readCoverageFile reads a coverage file with size validation.
+func readCoverageFile(path string) ([]byte, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading coverage file %q: %w", path, err)
+	}
+	if info.Size() > maxCoverageFileSize {
+		return nil, fmt.Errorf("coverage file %q exceeds maximum size of %d bytes (%d bytes)", path, maxCoverageFileSize, info.Size())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading coverage file %q: %w", path, err)
+	}
+	return data, nil
+}
+
 // formatResult pairs a format name with its parsed coverage results.
 type formatResult struct {
 	Format  string
@@ -56,9 +75,9 @@ func Run() error {
 		formatResults := map[string][]*CoverageResult{}
 		for _, p := range resolved {
 			fullPath := filepath.Join(inp.WorkDir, p)
-			data, err := os.ReadFile(fullPath)
+			data, err := readCoverageFile(fullPath)
 			if err != nil {
-				return fmt.Errorf("reading coverage file %q: %w", fullPath, err)
+				return err
 			}
 
 			matched := false
@@ -224,9 +243,9 @@ func discoverAndParse(format, workDir string) ([]*CoverageResult, error) {
 	var results []*CoverageResult
 	for _, p := range discovered {
 		fullPath := filepath.Join(workDir, p)
-		data, err := os.ReadFile(fullPath)
+		data, err := readCoverageFile(fullPath)
 		if err != nil {
-			return nil, fmt.Errorf("reading coverage file %q: %w", fullPath, err)
+			return nil, err
 		}
 
 		result, err := parser(data)

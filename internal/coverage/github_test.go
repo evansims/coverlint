@@ -99,8 +99,11 @@ func TestWriteOutputs(t *testing.T) {
 	if !strings.Contains(content, "passed=true") {
 		t.Errorf("output should contain 'passed=true', got: %s", content)
 	}
-	if !strings.Contains(content, "results=") {
-		t.Errorf("output should contain 'results=', got: %s", content)
+	if !strings.Contains(content, "results<<COVERLINT_RESULTS_EOF") {
+		t.Errorf("output should contain multiline results delimiter, got: %s", content)
+	}
+	if !strings.Contains(content, `"backend"`) {
+		t.Errorf("output should contain results JSON, got: %s", content)
 	}
 }
 
@@ -187,6 +190,42 @@ func TestWriteJobSummaryMultiFormatTotal(t *testing.T) {
 	}
 	if !strings.Contains(content, "**87.5%**") {
 		t.Error("summary should contain bold total percentage")
+	}
+}
+
+func TestSanitizeWorkflowCommand(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"normal message", "normal message"},
+		{"has\nnewline", "has newline"},
+		{"has\r\nnewline", "has  newline"},
+		{"has::colons", "has: :colons"},
+		{"inject\n::error::pwned", "inject : :error: :pwned"},
+	}
+	for _, tt := range tests {
+		got := sanitizeWorkflowCommand(tt.input)
+		if got != tt.want {
+			t.Errorf("sanitizeWorkflowCommand(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestSanitizeMarkdown(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"normal", "normal"},
+		{"has|pipe", "has\\|pipe"},
+		{"has\nnewline", "has newline"},
+	}
+	for _, tt := range tests {
+		got := sanitizeMarkdown(tt.input)
+		if got != tt.want {
+			t.Errorf("sanitizeMarkdown(%q) = %q, want %q", tt.input, got, tt.want)
+		}
 	}
 }
 

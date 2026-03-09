@@ -60,9 +60,26 @@ func DiscoverReports(format, workDir string) ([]string, error) {
 	return found, nil
 }
 
+// validatePathContainment checks that a resolved path stays within workDir.
+func validatePathContainment(resolvedPath, workDir string) error {
+	absWork, err := filepath.Abs(workDir)
+	if err != nil {
+		return fmt.Errorf("resolving working directory: %w", err)
+	}
+	absPath, err := filepath.Abs(filepath.Join(workDir, resolvedPath))
+	if err != nil {
+		return fmt.Errorf("resolving path: %w", err)
+	}
+	if !strings.HasPrefix(absPath, absWork+string(filepath.Separator)) && absPath != absWork {
+		return fmt.Errorf("path %q escapes working directory", resolvedPath)
+	}
+	return nil
+}
+
 // ResolvePaths expands a path input (which may contain globs and/or
 // comma-separated values) into a list of actual file paths relative
-// to workDir. Returns an error if no files match.
+// to workDir. Returns an error if no files match or if any path
+// escapes the working directory.
 func ResolvePaths(pathInput, workDir string) ([]string, error) {
 	var patterns []string
 	for _, p := range strings.Split(pathInput, ",") {
@@ -111,6 +128,13 @@ func ResolvePaths(pathInput, workDir string) ([]string, error) {
 
 	if len(resolved) == 0 {
 		return nil, fmt.Errorf("no coverage files found matching %q", pathInput)
+	}
+
+	// Validate all resolved paths stay within workDir
+	for _, p := range resolved {
+		if err := validatePathContainment(p, workDir); err != nil {
+			return nil, err
+		}
 	}
 
 	return resolved, nil
