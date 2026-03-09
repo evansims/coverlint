@@ -3,18 +3,82 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 <version>"
+  echo "       $0 --rollback <version>"
   echo ""
-  echo "  version   Semver version to release (e.g., 1.0.0 or v1.0.0)"
+  echo "  version      Semver version to release (e.g., 1.0.0 or v1.0.0)"
+  echo "  --rollback   Clean up a failed release (delete tag and GitHub release)"
   echo ""
-  echo "This script will:"
+  echo "Release steps:"
   echo "  1. Validate the version and check prerequisites"
-  echo "  2. Create and push a git tag"
-  echo "  3. Wait for the SLSA release workflow to build and create the GitHub release"
-  echo "  4. Update the major version tag (e.g., v1) for Actions marketplace"
-  echo "  5. Update README.md examples with pinned commit SHAs (coverlint + third-party actions)"
+  echo "  2. Stamp COVERLINT_VERSION in action.yml and commit"
+  echo "  3. Create and push a git tag"
+  echo "  4. Wait for the SLSA release workflow to build and create the GitHub release"
+  echo "  5. Update the major version tag (e.g., v1) for Actions marketplace"
+  echo "  6. Update README.md examples with pinned commit SHAs"
+  echo "  7. Reset COVERLINT_VERSION to dev placeholder"
   exit 1
 }
 
+if [[ $# -lt 1 ]]; then
+  usage
+fi
+
+# --- Rollback mode ---
+if [[ "$1" == "--rollback" ]]; then
+  if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 --rollback <version>" >&2
+    exit 1
+  fi
+
+  version="${2#v}"
+  tag="v${version}"
+  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "unknown")
+
+  echo "Rollback plan for ${tag}:"
+
+  # Check what exists
+  local_tag=$(git rev-parse "$tag" 2>/dev/null || true)
+  remote_tag=$(git ls-remote --tags origin "refs/tags/${tag}" 2>/dev/null | awk '{print $1}' || true)
+  has_release=$(gh release view "$tag" --json tagName -q .tagName 2>/dev/null || true)
+
+  [[ -n "$local_tag" ]]  && echo "  Local tag:      ${local_tag:0:7}" || echo "  Local tag:      (none)"
+  [[ -n "$remote_tag" ]] && echo "  Remote tag:     ${remote_tag:0:7}" || echo "  Remote tag:     (none)"
+  [[ -n "$has_release" ]] && echo "  GitHub release: yes" || echo "  GitHub release: (none)"
+
+  if [[ -z "$local_tag" && -z "$remote_tag" && -z "$has_release" ]]; then
+    echo ""
+    echo "Nothing to roll back."
+    exit 0
+  fi
+
+  echo ""
+  read -rp "Delete all of the above? [y/N] " confirm
+  if [[ "$confirm" != [yY] ]]; then
+    echo "Aborted."
+    exit 0
+  fi
+
+  if [[ -n "$has_release" ]]; then
+    echo "Deleting GitHub release ${tag}..."
+    gh release delete "$tag" --yes --cleanup-tag
+  fi
+
+  if [[ -n "$remote_tag" ]]; then
+    echo "Deleting remote tag ${tag}..."
+    git push origin ":refs/tags/${tag}" 2>/dev/null || true
+  fi
+
+  if [[ -n "$local_tag" ]]; then
+    echo "Deleting local tag ${tag}..."
+    git tag -d "$tag" 2>/dev/null || true
+  fi
+
+  echo ""
+  echo "Rollback complete. You can now re-run: $0 ${version}"
+  exit 0
+fi
+
+# --- Release mode ---
 if [[ $# -ne 1 ]]; then
   usage
 fi
@@ -44,6 +108,9 @@ fi
 
 if git rev-parse "$tag" &>/dev/null; then
   echo "Error: tag '${tag}' already exists" >&2
+  echo ""
+  echo "If the previous release failed, clean up first:"
+  echo "  $0 --rollback ${version}"
   exit 1
 fi
 
@@ -89,6 +156,8 @@ done
 if [[ -z "$run_id" ]]; then
   echo "Error: could not find release workflow run for ${tag}" >&2
   echo "Check https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/workflows/release.yml" >&2
+  echo ""
+  echo "To clean up and retry: $0 --rollback ${version}"
   exit 1
 fi
 
@@ -96,6 +165,8 @@ echo "Workflow run: ${run_id}"
 if ! gh run watch "$run_id" --exit-status; then
   echo "Error: release workflow failed" >&2
   echo "Check: gh run view ${run_id} --log-failed" >&2
+  echo ""
+  echo "To clean up and retry: $0 --rollback ${version}"
   exit 1
 fi
 
