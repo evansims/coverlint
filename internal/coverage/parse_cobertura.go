@@ -25,11 +25,13 @@ type coberturaClass struct {
 }
 
 type coberturaMethod struct {
+	Name  string          `xml:"name,attr"`
 	Lines []coberturaLine `xml:"lines>line"`
 }
 
 type coberturaLine struct {
-	Hits int64 `xml:"hits,attr"`
+	Number int64 `xml:"number,attr"`
+	Hits   int64 `xml:"hits,attr"`
 }
 
 func parseCobertura(data []byte) (*CoverageResult, error) {
@@ -42,66 +44,103 @@ func parseCobertura(data []byte) (*CoverageResult, error) {
 		return nil, fmt.Errorf("cobertura: no line data found (is this a valid cobertura report?)")
 	}
 
+	fileDetails := map[string]*FileLineDetail{}
+
+	for _, pkg := range cov.Packages {
+		for _, cls := range pkg.Classes {
+			detail, ok := fileDetails[cls.Filename]
+			if !ok {
+				detail = &FileLineDetail{
+					Lines:     map[int]int64{},
+					Branches:  map[string]int64{},
+					Functions: map[string]int64{},
+				}
+				fileDetails[cls.Filename] = detail
+			}
+
+			// Track lines from class-level line elements
+			for _, line := range cls.Lines {
+				lineNum := int(line.Number)
+				if line.Hits > detail.Lines[lineNum] {
+					detail.Lines[lineNum] = line.Hits
+				}
+			}
+
+			// Track methods and their lines
+			for _, method := range cls.Methods {
+				var methodHit bool
+				for _, line := range method.Lines {
+					lineNum := int(line.Number)
+					if line.Hits > detail.Lines[lineNum] {
+						detail.Lines[lineNum] = line.Hits
+					}
+					if line.Hits > 0 {
+						methodHit = true
+					}
+				}
+				// Use class+method as key to handle same method name in different classes
+				funcKey := cls.Filename + ":" + method.Name
+				if methodHit {
+					detail.Functions[funcKey] = 1
+				} else if _, exists := detail.Functions[funcKey]; !exists {
+					detail.Functions[funcKey] = 0
+				}
+			}
+		}
+	}
+
+	// If parsers populated line-level detail, use it for summary.
+	// But Cobertura also provides top-level summary attributes which
+	// may account for lines not in <class> elements (e.g., Python coverage.py
+	// doesn't emit <method> elements). Use the top-level summary for
+	// Line/Branch metrics, and compute Function from detail.
 	result := &CoverageResult{
-		Line: &Metric{Hit: cov.LinesCovered, Total: cov.LinesValid},
+		Line:        &Metric{Hit: cov.LinesCovered, Total: cov.LinesValid},
+		FileDetails: fileDetails,
 	}
 
 	if cov.BranchesValid > 0 {
 		result.Branch = &Metric{Hit: cov.BranchesCovered, Total: cov.BranchesValid}
 	}
 
-	// Extract function coverage and per-file metrics
-	var totalMethods, coveredMethods int64
-	fileMetrics := map[string]*FileCoverage{}
-
-	for _, pkg := range cov.Packages {
-		for _, cls := range pkg.Classes {
-			fc, ok := fileMetrics[cls.Filename]
-			if !ok {
-				fc = &FileCoverage{
-					Path: cls.Filename,
-					Line: &Metric{},
-				}
-				fileMetrics[cls.Filename] = fc
-			}
-
-			// Count lines per file from class-level line elements
-			for _, line := range cls.Lines {
-				fc.Line.Total++
-				if line.Hits > 0 {
-					fc.Line.Hit++
-				}
-			}
-
-			// Count methods
-			var classMethods, classMethodsCovered int64
-			for _, method := range cls.Methods {
-				totalMethods++
-				classMethods++
-				for _, line := range method.Lines {
-					if line.Hits > 0 {
-						coveredMethods++
-						classMethodsCovered++
-						break
-					}
-				}
-			}
-			if classMethods > 0 {
-				if fc.Function == nil {
-					fc.Function = &Metric{}
-				}
-				fc.Function.Total += classMethods
-				fc.Function.Hit += classMethodsCovered
+	// Compute function coverage from detail
+	var totalFuncs, coveredFuncs int64
+	for _, detail := range fileDetails {
+		for _, count := range detail.Functions {
+			totalFuncs++
+			if count > 0 {
+				coveredFuncs++
 			}
 		}
 	}
-
-	if totalMethods > 0 {
-		result.Function = &Metric{Hit: coveredMethods, Total: totalMethods}
+	if totalFuncs > 0 {
+		result.Function = &Metric{Hit: coveredFuncs, Total: totalFuncs}
 	}
 
-	for _, fc := range fileMetrics {
-		result.Files = append(result.Files, *fc)
+	// Compute per-file summaries for suggestions
+	for path, detail := range fileDetails {
+		fc := FileCoverage{Path: path}
+		if len(detail.Lines) > 0 {
+			var hit, total int64
+			for _, count := range detail.Lines {
+				total++
+				if count > 0 {
+					hit++
+				}
+			}
+			fc.Line = &Metric{Hit: hit, Total: total}
+		}
+		if len(detail.Functions) > 0 {
+			var hit, total int64
+			for _, count := range detail.Functions {
+				total++
+				if count > 0 {
+					hit++
+				}
+			}
+			fc.Function = &Metric{Hit: hit, Total: total}
+		}
+		result.Files = append(result.Files, fc)
 	}
 
 	return result, nil

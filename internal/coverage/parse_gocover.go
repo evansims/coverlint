@@ -11,12 +11,10 @@ import (
 func parseGocover(data []byte) (*CoverageResult, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 
-	var totalStmts, coveredStmts int64
 	var hasBlocks bool
 
-	// Per-file tracking
-	fileStmts := map[string]int64{}
-	fileCovered := map[string]int64{}
+	// Block-level tracking for merge support
+	blockDetails := map[string]map[string]*BlockEntry{}
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -49,18 +47,26 @@ func parseGocover(data []byte) (*CoverageResult, error) {
 			return nil, fmt.Errorf("parsing execution count %q: %w", countStr, err)
 		}
 
-		// Extract file path (everything before the colon+position)
+		// Extract file path and block key
 		colonIdx := strings.LastIndex(blockRef, ":")
 		filePath := blockRef
+		blockKey := blockRef
 		if colonIdx > 0 {
 			filePath = blockRef[:colonIdx]
+			blockKey = blockRef[colonIdx+1:]
 		}
 
-		totalStmts += stmts
-		fileStmts[filePath] += stmts
-		if count > 0 {
-			coveredStmts += stmts
-			fileCovered[filePath] += stmts
+		if blockDetails[filePath] == nil {
+			blockDetails[filePath] = map[string]*BlockEntry{}
+		}
+
+		if existing, ok := blockDetails[filePath][blockKey]; ok {
+			// Same block seen multiple times — take max count
+			if count > existing.Count {
+				existing.Count = count
+			}
+		} else {
+			blockDetails[filePath][blockKey] = &BlockEntry{Stmts: stmts, Count: count}
 		}
 		hasBlocks = true
 	}
@@ -73,16 +79,5 @@ func parseGocover(data []byte) (*CoverageResult, error) {
 		return nil, fmt.Errorf("gocover: no coverage blocks found")
 	}
 
-	var files []FileCoverage
-	for path, total := range fileStmts {
-		files = append(files, FileCoverage{
-			Path: path,
-			Line: &Metric{Hit: fileCovered[path], Total: total},
-		})
-	}
-
-	return &CoverageResult{
-		Line:  &Metric{Hit: coveredStmts, Total: totalStmts},
-		Files: files,
-	}, nil
+	return computeBlockBasedSummary(blockDetails), nil
 }

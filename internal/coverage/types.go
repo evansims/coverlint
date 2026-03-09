@@ -14,6 +14,11 @@ type CoverageResult struct {
 	Branch   *Metric
 	Function *Metric
 	Files    []FileCoverage
+
+	// Detail fields for merge support — populated by parsers.
+	// Only one of FileDetails or BlockDetails will be set.
+	FileDetails  map[string]*FileLineDetail            // file → detail (line-based formats)
+	BlockDetails map[string]map[string]*BlockEntry      // file → block_key → entry (gocover)
 }
 
 // FileCoverage holds per-file coverage metrics for suggestions.
@@ -22,6 +27,20 @@ type FileCoverage struct {
 	Line     *Metric
 	Branch   *Metric
 	Function *Metric
+}
+
+// FileLineDetail holds per-line coverage data for accurate merge operations.
+// Used by LCOV, Cobertura, Clover, and JaCoCo parsers.
+type FileLineDetail struct {
+	Lines     map[int]int64    // line number → execution count
+	Branches  map[string]int64 // branch key → taken count (format-specific key)
+	Functions map[string]int64 // function name → execution count
+}
+
+// BlockEntry holds coverage data for a gocover statement block.
+type BlockEntry struct {
+	Stmts int64
+	Count int64
 }
 
 // Metric holds hit/total counts for a coverage metric.

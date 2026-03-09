@@ -4,7 +4,7 @@ author: 'evansims'
 
 inputs:
   path:
-    description: 'Path to coverage report file (auto-discovered if omitted)'
+    description: 'Path to coverage report file(s). Supports globs (*.out) and comma-separated values. Auto-discovered if omitted.'
     required: false
     default: ''
   format:

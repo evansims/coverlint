@@ -14,30 +14,54 @@ func Run() error {
 		return err
 	}
 
-	// Auto-discover coverage report if path not specified
-	if strings.TrimSpace(inp.Path) == "" {
-		discovered, err := DiscoverReport(inp.Format, inp.WorkDir)
-		if err != nil {
-			return err
-		}
-		inp.Path = discovered
-		EmitAnnotation("notice", fmt.Sprintf("auto-discovered %s report: %s", inp.Format, discovered))
-	}
-
-	reportPath := filepath.Join(inp.WorkDir, inp.Path)
-	data, err := os.ReadFile(reportPath)
-	if err != nil {
-		return fmt.Errorf("reading coverage file %q: %w", reportPath, err)
-	}
-
 	parser, err := getParser(inp.Format)
 	if err != nil {
 		return err
 	}
 
-	result, err := parser(data)
-	if err != nil {
-		return fmt.Errorf("parsing coverage: %w", err)
+	// Resolve coverage report paths
+	var reportPaths []string
+	if strings.TrimSpace(inp.Path) == "" {
+		// Auto-discover all matching reports
+		discovered, err := DiscoverReports(inp.Format, inp.WorkDir)
+		if err != nil {
+			return err
+		}
+		reportPaths = discovered
+		EmitAnnotation("notice", fmt.Sprintf("auto-discovered %d %s report(s): %s",
+			len(discovered), inp.Format, strings.Join(discovered, ", ")))
+	} else {
+		// Resolve explicit path (supports globs and comma-separated)
+		resolved, err := ResolvePaths(inp.Path, inp.WorkDir)
+		if err != nil {
+			return err
+		}
+		reportPaths = resolved
+	}
+
+	// Parse all report files
+	var parsed []*CoverageResult
+	for _, p := range reportPaths {
+		fullPath := filepath.Join(inp.WorkDir, p)
+		data, err := os.ReadFile(fullPath)
+		if err != nil {
+			return fmt.Errorf("reading coverage file %q: %w", fullPath, err)
+		}
+
+		result, err := parser(data)
+		if err != nil {
+			return fmt.Errorf("parsing %q: %w", p, err)
+		}
+		parsed = append(parsed, result)
+	}
+
+	// Merge if multiple reports
+	var result *CoverageResult
+	if len(parsed) == 1 {
+		result = parsed[0]
+	} else {
+		result = MergeResults(parsed)
+		EmitAnnotation("notice", fmt.Sprintf("merged %d coverage reports", len(parsed)))
 	}
 	result.Name = inp.Name
 

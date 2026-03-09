@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // defaultPaths maps coverage formats to common default output paths,
@@ -36,20 +37,81 @@ var defaultPaths = map[string][]string{
 	},
 }
 
-// DiscoverReport searches for a coverage report file using the default paths
-// for the given format. It returns the first path that exists, relative to workDir.
-func DiscoverReport(format, workDir string) (string, error) {
+// DiscoverReports searches for coverage report files using the default paths
+// for the given format. It returns all paths that exist, relative to workDir.
+func DiscoverReports(format, workDir string) ([]string, error) {
 	paths, ok := defaultPaths[format]
 	if !ok {
-		return "", fmt.Errorf("no default paths configured for format %q", format)
+		return nil, fmt.Errorf("no default paths configured for format %q", format)
 	}
 
+	var found []string
 	for _, p := range paths {
 		full := filepath.Join(workDir, p)
 		if _, err := os.Stat(full); err == nil {
-			return p, nil
+			found = append(found, p)
 		}
 	}
 
-	return "", fmt.Errorf("auto-discovery: no %s coverage report found in %q (searched: %v)", format, workDir, paths)
+	if len(found) == 0 {
+		return nil, fmt.Errorf("auto-discovery: no %s coverage report found in %q (searched: %v)", format, workDir, paths)
+	}
+
+	return found, nil
+}
+
+// ResolvePaths expands a path input (which may contain globs and/or
+// comma-separated values) into a list of actual file paths relative
+// to workDir. Returns an error if no files match.
+func ResolvePaths(pathInput, workDir string) ([]string, error) {
+	var patterns []string
+	for _, p := range strings.Split(pathInput, ",") {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			patterns = append(patterns, p)
+		}
+	}
+
+	seen := map[string]bool{}
+	var resolved []string
+
+	for _, pattern := range patterns {
+		fullPattern := filepath.Join(workDir, pattern)
+
+		// Try glob expansion
+		matches, err := filepath.Glob(fullPattern)
+		if err != nil {
+			return nil, fmt.Errorf("invalid glob pattern %q: %w", pattern, err)
+		}
+
+		if len(matches) > 0 {
+			for _, match := range matches {
+				// Convert back to relative path
+				rel, err := filepath.Rel(workDir, match)
+				if err != nil {
+					rel = match
+				}
+				if !seen[rel] {
+					seen[rel] = true
+					resolved = append(resolved, rel)
+				}
+			}
+		} else {
+			// Not a glob — check if literal file exists
+			if _, err := os.Stat(fullPattern); err == nil {
+				if !seen[pattern] {
+					seen[pattern] = true
+					resolved = append(resolved, pattern)
+				}
+			} else {
+				return nil, fmt.Errorf("coverage file not found: %q", fullPattern)
+			}
+		}
+	}
+
+	if len(resolved) == 0 {
+		return nil, fmt.Errorf("no coverage files found matching %q", pathInput)
+	}
+
+	return resolved, nil
 }

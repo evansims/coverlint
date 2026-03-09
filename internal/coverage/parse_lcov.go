@@ -11,27 +11,52 @@ import (
 func parseLcov(data []byte) (*CoverageResult, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 
-	var lineFnd, lineHit int64
-	var branchFnd, branchHit int64
-	var funcFnd, funcHit int64
-	var hasBranch, hasFunc bool
 	var hasRecords bool
 
-	// Per-file tracking
+	// Per-file detail tracking for merge support
+	fileDetails := map[string]*FileLineDetail{}
 	var currentFile string
-	var fileLine, fileBranch, fileFunc *Metric
-	var files []FileCoverage
+	var currentDetail *FileLineDetail
+	var hasDetailLines bool // tracks if any DA/BRDA/FNDA lines were found
+
+	// Summary-line fallback tracking (for files without DA lines)
+	type fileSummary struct {
+		lf, lh, brf, brh, fnf, fnh int64
+	}
+	fileSummaries := map[string]*fileSummary{}
+	var currentSummary *fileSummary
+
+	ensureDetail := func() {
+		if currentDetail != nil {
+			return
+		}
+		currentDetail = &FileLineDetail{
+			Lines:     map[int]int64{},
+			Branches:  map[string]int64{},
+			Functions: map[string]int64{},
+		}
+	}
+
+	ensureSummary := func() {
+		if currentSummary != nil {
+			return
+		}
+		currentSummary = &fileSummary{}
+	}
 
 	flushFile := func() {
 		if currentFile == "" {
 			return
 		}
-		fc := FileCoverage{Path: currentFile, Line: fileLine, Branch: fileBranch, Function: fileFunc}
-		files = append(files, fc)
-		fileLine = nil
-		fileBranch = nil
-		fileFunc = nil
+		if currentDetail != nil {
+			fileDetails[currentFile] = currentDetail
+		}
+		if currentSummary != nil {
+			fileSummaries[currentFile] = currentSummary
+		}
 		currentFile = ""
+		currentDetail = nil
+		currentSummary = nil
 	}
 
 	for scanner.Scan() {
@@ -55,69 +80,99 @@ func parseLcov(data []byte) (*CoverageResult, error) {
 		switch key {
 		case "SF":
 			currentFile = val
-		case "LF":
-			n, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parsing LF value %q: %w", val, err)
-			}
-			lineFnd += n
+			ensureDetail()
+			ensureSummary()
 			hasRecords = true
-			if fileLine == nil {
-				fileLine = &Metric{}
+
+		case "DA":
+			// DA:line_number,execution_count
+			daParts := strings.SplitN(val, ",", 2)
+			if len(daParts) != 2 {
+				continue
 			}
-			fileLine.Total = n
+			lineNum, err := strconv.Atoi(daParts[0])
+			if err != nil {
+				continue
+			}
+			count, err := strconv.ParseInt(daParts[1], 10, 64)
+			if err != nil {
+				continue
+			}
+			ensureDetail()
+			currentDetail.Lines[lineNum] = count
+			hasDetailLines = true
+
+		case "BRDA":
+			// BRDA:line,block,branch,taken  (taken may be "-" for not executed)
+			brdaParts := strings.SplitN(val, ",", 4)
+			if len(brdaParts) != 4 {
+				continue
+			}
+			taken := brdaParts[3]
+			var count int64
+			if taken != "-" {
+				n, err := strconv.ParseInt(taken, 10, 64)
+				if err != nil {
+					continue
+				}
+				count = n
+			}
+			branchKey := brdaParts[0] + ":" + brdaParts[1] + ":" + brdaParts[2]
+			ensureDetail()
+			currentDetail.Branches[branchKey] = count
+			hasDetailLines = true
+
+		case "FNDA":
+			// FNDA:execution_count,function_name
+			fndaParts := strings.SplitN(val, ",", 2)
+			if len(fndaParts) != 2 {
+				continue
+			}
+			count, err := strconv.ParseInt(fndaParts[0], 10, 64)
+			if err != nil {
+				continue
+			}
+			ensureDetail()
+			currentDetail.Functions[fndaParts[1]] = count
+			hasDetailLines = true
+
+		case "FN":
+			// FN:line_number,function_name — defines a function (count from FNDA)
+			fnParts := strings.SplitN(val, ",", 2)
+			if len(fnParts) != 2 {
+				continue
+			}
+			ensureDetail()
+			// Register function with 0 count if not yet seen
+			if _, ok := currentDetail.Functions[fnParts[1]]; !ok {
+				currentDetail.Functions[fnParts[1]] = 0
+			}
+
+		// Summary lines — used as fallback when no DA lines present
+		case "LF":
+			n, _ := strconv.ParseInt(val, 10, 64)
+			ensureSummary()
+			currentSummary.lf = n
 		case "LH":
-			n, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parsing LH value %q: %w", val, err)
-			}
-			lineHit += n
-			if fileLine == nil {
-				fileLine = &Metric{}
-			}
-			fileLine.Hit = n
+			n, _ := strconv.ParseInt(val, 10, 64)
+			ensureSummary()
+			currentSummary.lh = n
 		case "BRF":
-			n, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parsing BRF value %q: %w", val, err)
-			}
-			branchFnd += n
-			hasBranch = true
-			if fileBranch == nil {
-				fileBranch = &Metric{}
-			}
-			fileBranch.Total = n
+			n, _ := strconv.ParseInt(val, 10, 64)
+			ensureSummary()
+			currentSummary.brf = n
 		case "BRH":
-			n, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parsing BRH value %q: %w", val, err)
-			}
-			branchHit += n
-			if fileBranch == nil {
-				fileBranch = &Metric{}
-			}
-			fileBranch.Hit = n
+			n, _ := strconv.ParseInt(val, 10, 64)
+			ensureSummary()
+			currentSummary.brh = n
 		case "FNF":
-			n, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parsing FNF value %q: %w", val, err)
-			}
-			funcFnd += n
-			hasFunc = true
-			if fileFunc == nil {
-				fileFunc = &Metric{}
-			}
-			fileFunc.Total = n
+			n, _ := strconv.ParseInt(val, 10, 64)
+			ensureSummary()
+			currentSummary.fnf = n
 		case "FNH":
-			n, err := strconv.ParseInt(val, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("parsing FNH value %q: %w", val, err)
-			}
-			funcHit += n
-			if fileFunc == nil {
-				fileFunc = &Metric{}
-			}
-			fileFunc.Hit = n
+			n, _ := strconv.ParseInt(val, 10, 64)
+			ensureSummary()
+			currentSummary.fnh = n
 		}
 	}
 
@@ -132,15 +187,41 @@ func parseLcov(data []byte) (*CoverageResult, error) {
 		return nil, fmt.Errorf("lcov: no coverage records found")
 	}
 
-	result := &CoverageResult{
-		Line:  &Metric{Hit: lineHit, Total: lineFnd},
-		Files: files,
+	// If we have detail lines (DA/BRDA/FNDA), compute summaries from them
+	if hasDetailLines {
+		return computeLineBasedSummary(fileDetails), nil
 	}
-	if hasBranch && branchFnd > 0 {
-		result.Branch = &Metric{Hit: branchHit, Total: branchFnd}
+
+	// Fallback: use summary lines (LF/LH/BRF/BRH/FNF/FNH)
+	var totalLines, hitLines int64
+	var totalBranches, hitBranches int64
+	var totalFuncs, hitFuncs int64
+	var hasBranch, hasFunc bool
+
+	for _, s := range fileSummaries {
+		totalLines += s.lf
+		hitLines += s.lh
+		if s.brf > 0 {
+			hasBranch = true
+			totalBranches += s.brf
+			hitBranches += s.brh
+		}
+		if s.fnf > 0 {
+			hasFunc = true
+			totalFuncs += s.fnf
+			hitFuncs += s.fnh
+		}
 	}
-	if hasFunc && funcFnd > 0 {
-		result.Function = &Metric{Hit: funcHit, Total: funcFnd}
+
+	result := &CoverageResult{}
+	if totalLines > 0 {
+		result.Line = &Metric{Hit: hitLines, Total: totalLines}
+	}
+	if hasBranch && totalBranches > 0 {
+		result.Branch = &Metric{Hit: hitBranches, Total: totalBranches}
+	}
+	if hasFunc && totalFuncs > 0 {
+		result.Function = &Metric{Hit: hitFuncs, Total: totalFuncs}
 	}
 
 	return result, nil

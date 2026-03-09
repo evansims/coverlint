@@ -3,6 +3,7 @@ package coverage
 import (
 	"encoding/xml"
 	"fmt"
+	"strconv"
 )
 
 type jacocoReport struct {
@@ -12,13 +13,22 @@ type jacocoReport struct {
 }
 
 type jacocoPackage struct {
-	Name        string            `xml:"name,attr"`
+	Name        string             `xml:"name,attr"`
 	SourceFiles []jacocoSourceFile `xml:"sourcefile"`
 }
 
 type jacocoSourceFile struct {
 	Name     string          `xml:"name,attr"`
+	Lines    []jacocoLine    `xml:"line"`
 	Counters []jacocoCounter `xml:"counter"`
+}
+
+type jacocoLine struct {
+	Nr int   `xml:"nr,attr"`
+	Mi int64 `xml:"mi,attr"` // missed instructions
+	Ci int64 `xml:"ci,attr"` // covered instructions
+	Mb int64 `xml:"mb,attr"` // missed branches
+	Cb int64 `xml:"cb,attr"` // covered branches
 }
 
 type jacocoCounter struct {
@@ -37,6 +47,7 @@ func parseJacoco(data []byte) (*CoverageResult, error) {
 		return nil, fmt.Errorf("jacoco: no counters found at report level")
 	}
 
+	// Use report-level counters for single-file summary
 	result := &CoverageResult{}
 
 	for _, c := range report.Counters {
@@ -59,12 +70,58 @@ func parseJacoco(data []byte) (*CoverageResult, error) {
 		return nil, fmt.Errorf("jacoco: no LINE counter found")
 	}
 
-	// Collect per-sourcefile metrics
+	// Build per-file detail from line elements and sourcefile counters
+	fileDetails := map[string]*FileLineDetail{}
+
 	for _, pkg := range report.Packages {
 		for _, sf := range pkg.SourceFiles {
-			fc := FileCoverage{
-				Path: pkg.Name + "/" + sf.Name,
+			filePath := pkg.Name + "/" + sf.Name
+			detail := &FileLineDetail{
+				Lines:     map[int]int64{},
+				Branches:  map[string]int64{},
+				Functions: map[string]int64{},
 			}
+
+			for _, line := range sf.Lines {
+				// A line is covered if it has any covered instructions
+				if line.Ci > 0 {
+					detail.Lines[line.Nr] = line.Ci
+				} else {
+					detail.Lines[line.Nr] = 0
+				}
+
+				// Track individual branch points per line
+				totalBranches := line.Mb + line.Cb
+				if totalBranches > 0 {
+					for i := int64(0); i < line.Cb; i++ {
+						detail.Branches[strconv.Itoa(line.Nr)+":"+strconv.FormatInt(i, 10)] = 1
+					}
+					for i := int64(0); i < line.Mb; i++ {
+						detail.Branches[strconv.Itoa(line.Nr)+":missed:"+strconv.FormatInt(i, 10)] = 0
+					}
+				}
+			}
+
+			// Track methods from sourcefile-level METHOD counter
+			for _, c := range sf.Counters {
+				if c.Type == "METHOD" {
+					// We don't have individual method names from line-level data,
+					// so track covered/missed method counts using synthetic keys
+					for i := int64(0); i < c.Covered; i++ {
+						detail.Functions[filePath+":method:"+strconv.FormatInt(i, 10)] = 1
+					}
+					for i := int64(0); i < c.Missed; i++ {
+						detail.Functions[filePath+":method:missed:"+strconv.FormatInt(i, 10)] = 0
+					}
+				}
+			}
+
+			if len(detail.Lines) > 0 {
+				fileDetails[filePath] = detail
+			}
+
+			// Build FileCoverage for suggestions
+			fc := FileCoverage{Path: filePath}
 			for _, c := range sf.Counters {
 				total := c.Missed + c.Covered
 				switch c.Type {
@@ -85,6 +142,8 @@ func parseJacoco(data []byte) (*CoverageResult, error) {
 			}
 		}
 	}
+
+	result.FileDetails = fileDetails
 
 	return result, nil
 }

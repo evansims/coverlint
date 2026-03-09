@@ -3,6 +3,7 @@ package coverage
 import (
 	"encoding/xml"
 	"fmt"
+	"strconv"
 )
 
 type cloverCoverage struct {
@@ -11,9 +12,9 @@ type cloverCoverage struct {
 }
 
 type cloverProject struct {
-	Metrics  cloverMetrics  `xml:"metrics"`
-	Packages []cloverPkg    `xml:"package"`
-	Files    []cloverFile   `xml:"file"`
+	Metrics  cloverMetrics `xml:"metrics"`
+	Packages []cloverPkg   `xml:"package"`
+	Files    []cloverFile  `xml:"file"`
 }
 
 type cloverPkg struct {
@@ -24,6 +25,13 @@ type cloverFile struct {
 	Name    string        `xml:"name,attr"`
 	Path    string        `xml:"path,attr"`
 	Metrics cloverMetrics `xml:"metrics"`
+	Lines   []cloverLine  `xml:"line"`
+}
+
+type cloverLine struct {
+	Num   int    `xml:"num,attr"`
+	Type  string `xml:"type,attr"` // "stmt", "cond", "method"
+	Count int64  `xml:"count,attr"`
 }
 
 type cloverMetrics struct {
@@ -47,8 +55,70 @@ func parseClover(data []byte) (*CoverageResult, error) {
 		return nil, fmt.Errorf("clover: no statement data found (is this a valid clover report?)")
 	}
 
+	// Collect all files from packages and top-level
+	var allFiles []cloverFile
+	for _, pkg := range cov.Project.Packages {
+		allFiles = append(allFiles, pkg.Files...)
+	}
+	allFiles = append(allFiles, cov.Project.Files...)
+
+	// Build per-file detail from line elements
+	fileDetails := map[string]*FileLineDetail{}
+
+	for _, f := range allFiles {
+		name := f.Path
+		if name == "" {
+			name = f.Name
+		}
+		if name == "" {
+			continue
+		}
+
+		detail := &FileLineDetail{
+			Lines:     map[int]int64{},
+			Branches:  map[string]int64{},
+			Functions: map[string]int64{},
+		}
+
+		hasLineData := false
+		for _, line := range f.Lines {
+			hasLineData = true
+			switch line.Type {
+			case "stmt":
+				if line.Count > detail.Lines[line.Num] {
+					detail.Lines[line.Num] = line.Count
+				}
+			case "cond":
+				// Track as both a line and a branch point
+				if line.Count > detail.Lines[line.Num] {
+					detail.Lines[line.Num] = line.Count
+				}
+				branchKey := strconv.Itoa(line.Num)
+				if line.Count > detail.Branches[branchKey] {
+					detail.Branches[branchKey] = line.Count
+				}
+			case "method":
+				if line.Count > detail.Lines[line.Num] {
+					detail.Lines[line.Num] = line.Count
+				}
+				funcKey := name + ":" + strconv.Itoa(line.Num)
+				if line.Count > detail.Functions[funcKey] {
+					detail.Functions[funcKey] = line.Count
+				}
+			}
+		}
+
+		if hasLineData {
+			fileDetails[name] = detail
+		}
+	}
+
+	// If we have line-level detail, compute summaries from it for merge support.
+	// But also preserve the project-level metrics for single-file accuracy,
+	// since project metrics may include data not in individual file line elements.
 	result := &CoverageResult{
-		Line: &Metric{Hit: m.CoveredStatements, Total: m.Statements},
+		Line:        &Metric{Hit: m.CoveredStatements, Total: m.Statements},
+		FileDetails: fileDetails,
 	}
 
 	if m.Conditionals > 0 {
@@ -59,13 +129,7 @@ func parseClover(data []byte) (*CoverageResult, error) {
 		result.Function = &Metric{Hit: m.CoveredMethods, Total: m.Methods}
 	}
 
-	// Collect per-file metrics from packages and top-level files
-	var allFiles []cloverFile
-	for _, pkg := range cov.Project.Packages {
-		allFiles = append(allFiles, pkg.Files...)
-	}
-	allFiles = append(allFiles, cov.Project.Files...)
-
+	// Compute per-file summaries for suggestions
 	for _, f := range allFiles {
 		name := f.Path
 		if name == "" {
