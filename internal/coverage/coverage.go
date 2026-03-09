@@ -1,6 +1,7 @@
 package coverage
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -219,15 +220,15 @@ func Run() error {
 	}
 
 	// Generate SARIF report if configured
-	var sarifOutputPath string
-	if inp.SARIF != "" {
-		sarifPath := filepath.Join(inp.WorkDir, inp.SARIF)
+	var sarifJSON string
+	if inp.SARIF {
 		sarifDoc := GenerateSARIF(combined.Files, combined.FileDetails, combined.BlockDetails)
-		if err := WriteSARIFFile(sarifDoc, sarifPath); err != nil {
-			annotator.Emit("warning", fmt.Sprintf("failed to write SARIF: %v", err))
+		sarifBytes, merr := json.MarshalIndent(sarifDoc, "", "  ")
+		if merr != nil {
+			annotator.Emit("warning", fmt.Sprintf("failed to marshal SARIF: %v", merr))
 		} else {
-			annotator.Emit("notice", fmt.Sprintf("SARIF report written to %s", inp.SARIF))
-			sarifOutputPath = sarifPath
+			sarifJSON = string(sarifBytes)
+			annotator.Emit("notice", "SARIF output generated")
 		}
 	}
 
@@ -247,7 +248,7 @@ func Run() error {
 	bd := GenerateBaseline(allResults)
 	baselineOutput = &bd
 
-	if err := WriteOutputs(cr.Passed, allResults, baselineOutput, sarifOutputPath); err != nil {
+	if err := WriteOutputs(cr.Passed, allResults, baselineOutput, sarifJSON); err != nil {
 		annotator.Emit("warning", fmt.Sprintf("failed to write outputs: %v", err))
 	}
 

@@ -1,9 +1,7 @@
 package coverage
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -286,16 +284,3 @@ func parseBlockRange(key string) (startLine, endLine int, err error) {
 	return startLine, endLine, nil
 }
 
-// WriteSARIFFile marshals a SARIF document to JSON and writes it to the given path.
-func WriteSARIFFile(doc SARIFDocument, path string) error {
-	data, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshaling SARIF: %w", err)
-	}
-
-	if err := os.WriteFile(path, data, 0644); err != nil {
-		return fmt.Errorf("writing SARIF file: %w", err)
-	}
-
-	return nil
-}

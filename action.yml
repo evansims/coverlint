@@ -53,9 +53,9 @@ inputs:
     required: false
     default: 'true'
   sarif:
-    description: 'File path for SARIF output. Upload separately with github/codeql-action/upload-sarif.'
+    description: 'Generate SARIF output for GitHub Code Scanning (default: false)'
     required: false
-    default: ''
+    default: 'false'
   baseline:
     description: 'JSON string of previous baseline data for delta comparison'
     required: false
@@ -82,7 +82,7 @@ outputs:
     description: 'JSON baseline data for the current run, suitable for storage and future comparison'
     value: ${{ steps.run.outputs.baseline }}
   sarif:
-    description: 'Path to the generated SARIF file (echoes the sarif input)'
+    description: 'SARIF JSON for uploading to GitHub Code Scanning'
     value: ${{ steps.run.outputs.sarif }}
 
 runs:

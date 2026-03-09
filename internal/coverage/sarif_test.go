@@ -1,11 +1,7 @@
 package coverage
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -201,60 +197,6 @@ func TestParseBlockRange(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestWriteSARIFFile(t *testing.T) {
-	t.Run("writes valid JSON", func(t *testing.T) {
-		dir := t.TempDir()
-		path := filepath.Join(dir, "report.sarif")
-
-		doc := SARIFDocument{
-			Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
-			Version: "2.1.0",
-			Runs: []SARIFRun{
-				{
-					Tool: SARIFTool{
-						Driver: SARIFDriver{
-							Name:    "coverlint",
-							Version: "1.0.0",
-						},
-					},
-					Results: []SARIFResult{},
-				},
-			},
-		}
-
-		if err := WriteSARIFFile(doc, path); err != nil {
-			t.Fatalf("WriteSARIFFile() error: %v", err)
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("reading output: %v", err)
-		}
-
-		// Verify it's valid JSON
-		var parsed SARIFDocument
-		if err := json.Unmarshal(data, &parsed); err != nil {
-			t.Fatalf("output is not valid JSON: %v", err)
-		}
-		if parsed.Version != "2.1.0" {
-			t.Errorf("parsed version = %q, want %q", parsed.Version, "2.1.0")
-		}
-
-		// Verify indentation
-		if !strings.Contains(string(data), "  ") {
-			t.Error("expected 2-space indentation")
-		}
-	})
-
-	t.Run("errors on invalid path", func(t *testing.T) {
-		doc := SARIFDocument{Version: "2.1.0"}
-		err := WriteSARIFFile(doc, "/nonexistent/dir/report.sarif")
-		if err == nil {
-			t.Fatal("expected error for invalid path")
-		}
-	})
 }
 
 func TestGenerateSARIF_ResultMessage(t *testing.T) {

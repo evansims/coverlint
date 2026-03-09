@@ -501,15 +501,20 @@ func TestWriteOutputsWithSARIF(t *testing.T) {
 		{Name: "test", Passed: true},
 	}
 
-	if err := WriteOutputs(true, results, nil, "/tmp/coverage.sarif"); err != nil {
+	sarifJSON := `{"version":"2.1.0","runs":[]}`
+
+	if err := WriteOutputs(true, results, nil, sarifJSON); err != nil {
 		t.Fatalf("WriteOutputs() error: %v", err)
 	}
 
 	data, _ := os.ReadFile(outputFile)
 	content := string(data)
 
-	if !strings.Contains(content, "sarif=/tmp/coverage.sarif") {
-		t.Errorf("output should contain sarif path, got: %s", content)
+	if !strings.Contains(content, "sarif<<COVERLINT_SARIF_EOF") {
+		t.Errorf("output should contain sarif with multiline delimiter, got: %s", content)
+	}
+	if !strings.Contains(content, `"version":"2.1.0"`) {
+		t.Errorf("output should contain SARIF JSON content, got: %s", content)
 	}
 }
 
