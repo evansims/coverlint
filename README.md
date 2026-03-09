@@ -4,7 +4,7 @@
 
 Coverage checks for GitHub Actions — no external services, no secrets, no accounts. Add one step to your workflow, set a threshold, and get pass/fail results with annotations and a job summary.
 
-Coverlint parses coverage reports in [five formats](#supported-formats), enforces configurable thresholds, and runs entirely within your GitHub Actions runner.
+Coverlint parses coverage reports in [five formats](#supported-formats), enforces configurable thresholds, and runs entirely within your GitHub Actions runner. Supports Linux, macOS, and Windows.
 
 ## Supported Formats
 
@@ -127,13 +127,6 @@ Setting `format` explicitly is faster and avoids guesswork when files share name
 
 `min-coverage` checks a weighted score computed from line, branch, and function coverage. The default weights are line 50, branch 30, function 20. If your format doesn't report a metric (e.g. `gocover` has no branch or function data), its weight shifts to the remaining metrics.
 
-```yaml
-- uses: evansims/coverlint@403f492d058d03ec2b8bee6d791a5316421dbd31 # v1.1.0
-  with:
-    format: lcov
-    min-coverage: 80
-```
-
 ### Custom Weights
 
 Weights are relative — adjust them to match what matters to your project:
@@ -213,7 +206,7 @@ You don't need to specify `format` or `path` — coverlint can figure both out. 
 
 ## Baseline & Regression Detection
 
-Track coverage over time and prevent regressions. Set `min-delta` to control how much the score can drop between runs — coverlint compares the current score against a previous `baseline` you provide as JSON:
+Set `min-delta` to control how much the score can drop between runs. Coverlint compares the current score against a previous `baseline` you provide as JSON:
 
 ```yaml
 - uses: evansims/coverlint@403f492d058d03ec2b8bee6d791a5316421dbd31 # v1.1.0
@@ -318,6 +311,8 @@ jobs:
       contents: read
       security-events: write
     steps:
+      - uses: actions/checkout@v6
+
       # ... your test steps ...
 
       - uses: evansims/coverlint@403f492d058d03ec2b8bee6d791a5316421dbd31 # v1.1.0
@@ -380,11 +375,11 @@ jobs:
 
 Show live coverage in your README — no external services or secrets needed.
 
-> [!IMPORTANT]
-> **Why two jobs?** The test job runs with read-only permissions on every push and PR. Only the badge job gets `contents: write`, and only on pushes to `main`. This keeps your PR checks locked down.
-
 <details>
 <summary><strong>Badge workflow</strong></summary>
+
+> [!IMPORTANT]
+> **Why two jobs?** The test job runs with read-only permissions on every push and PR. Only the badge job gets `contents: write`, and only on pushes to `main`. This keeps your PR checks locked down.
 
 ```yaml
 on:
@@ -476,7 +471,7 @@ Prefer [shields.io](https://shields.io) styling? Use `badge-json` instead:
 | `suggestions`       | Show top coverage improvement opportunities in job summary (default: `true`)                           |
 | `annotations`       | Annotation output: `true` (default), `false`, or a max count                                           |
 | `baseline`          | JSON string of previous baseline data for delta comparison                                             |
-| `min-delta`         | Minimum allowed score change from baseline (e.g. `0` = no regression, `-2` = max 2pt drop)             |
+| `min-delta`         | Minimum allowed score change (e.g. `0` = no regression, `-2` = max 2pt drop). Ignored without `baseline` |
 | `sarif`             | Generate SARIF output for GitHub Code Scanning (default: `false`)                                      |
 
 ## Outputs
@@ -487,7 +482,7 @@ Prefer [shields.io](https://shields.io) styling? Use `badge-json` instead:
 | `results`    | Coverage data as JSON                                                      |
 | `badge-svg`  | Ready-to-use SVG coverage badge                                            |
 | `badge-json` | Coverage badge as [shields.io](https://shields.io) endpoint JSON           |
-| `baseline`   | Current coverage baseline as JSON, for storage and future delta comparison |
+| `baseline`   | Current run's baseline as JSON — store and feed back as the `baseline` input next run |
 | `sarif`      | SARIF JSON for uploading to GitHub Code Scanning                           |
 
 <details>
@@ -539,7 +534,7 @@ Use exit codes to distinguish between "tests passed but coverage is low" and "so
 
 ## Pinning
 
-Releases use [immutable tags](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases). For production workflows, [pin actions by commit SHA](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) and use [Dependabot](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/about-dependabot-version-updates) to keep them current.
+Releases use [immutable tags](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases). For production workflows, [pin actions by commit SHA](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) and use [Dependabot](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/about-dependabot-version-updates) to keep them current. The binary is checksum-verified on every download.
 
 ## Contributing
 
