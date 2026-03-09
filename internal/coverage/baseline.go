@@ -54,7 +54,7 @@ func LoadBaseline(source string) (*BaselineData, error) {
 // CompareBaseline checks whether the coverage delta meets the minimum allowed change.
 // Returns a Violation if the score dropped more than allowed by minDelta.
 func CompareBaseline(prev *BaselineData, currentScore float64, minDelta *float64) []Violation {
-	if minDelta == nil {
+	if minDelta == nil || prev == nil {
 		return nil
 	}
 

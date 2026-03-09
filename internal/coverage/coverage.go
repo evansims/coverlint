@@ -188,6 +188,30 @@ func Run() error {
 		}
 	}
 
+	// Baseline comparison (before writing outputs so cr.Passed reflects delta violations)
+	if inp.Baseline != "" {
+		prev, loadErr := LoadBaseline(inp.Baseline)
+		if loadErr != nil {
+			annotator.Emit("warning", fmt.Sprintf("failed to load baseline: %v", loadErr))
+		} else {
+			deltaViolations := CompareBaseline(prev, cr.Score, inp.MinDelta)
+			if len(deltaViolations) > 0 {
+				cr.Violations = append(cr.Violations, deltaViolations...)
+				cr.Passed = false
+				totalEntry.Passed = cr.Passed
+				for _, v := range deltaViolations {
+					level := "error"
+					if !inp.FailOnError {
+						level = "warning"
+					}
+					annotator.Emit(level, FormatViolation(v))
+				}
+			}
+		}
+	} else if inp.MinDelta != nil {
+		annotator.Emit("warning", "min-delta is set but no baseline provided — delta comparison skipped")
+	}
+
 	// Compute suggestions if enabled
 	var suggestions []Suggestion
 	if inp.Suggestions && len(combined.Files) > 0 {
@@ -205,29 +229,8 @@ func Run() error {
 		annotator.Emit("warning", fmt.Sprintf("failed to write job summary: %v", err))
 	}
 
-	// Baseline comparison
-	var baselineOutput *BaselineData
-	if inp.Baseline != "" {
-		prev, loadErr := LoadBaseline(inp.Baseline)
-		if loadErr != nil {
-			annotator.Emit("warning", fmt.Sprintf("failed to load baseline: %v", loadErr))
-		} else {
-			deltaViolations := CompareBaseline(prev, cr.Score, inp.MinDelta)
-			if len(deltaViolations) > 0 {
-				cr.Violations = append(cr.Violations, deltaViolations...)
-				cr.Passed = false
-				for _, v := range deltaViolations {
-					level := "error"
-					if !inp.FailOnError {
-						level = "warning"
-					}
-					annotator.Emit(level, FormatViolation(v))
-				}
-			}
-		}
-	}
-
 	// Always generate baseline output
+	var baselineOutput *BaselineData
 	bd := GenerateBaseline(allResults)
 	baselineOutput = &bd
 

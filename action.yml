@@ -59,6 +59,7 @@ inputs:
   min-delta:
     description: 'Minimum allowed score change (can be negative to allow drops, e.g. -2.0)'
     required: false
+    default: ''
 
 outputs:
   results:
