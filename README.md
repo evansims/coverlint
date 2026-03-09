@@ -228,7 +228,7 @@ jobs:
     outputs:
       baseline: ${{ steps.coverage.outputs.baseline }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       # ... your test steps ...
 
@@ -238,7 +238,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           if curl -fsL "https://raw.githubusercontent.com/${REPO}/baselines/coverage-baseline.json" -o /tmp/baseline.json 2>/dev/null; then
-            delimiter="COVERLINT_BASELINE_EOF"
+            delimiter=$(openssl rand -hex 16)
             echo "baseline<<${delimiter}" >> "$GITHUB_OUTPUT"
             cat /tmp/baseline.json >> "$GITHUB_OUTPUT"
             echo "${delimiter}" >> "$GITHUB_OUTPUT"
@@ -256,10 +256,13 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    concurrency:
+      group: update-baselines
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Push baseline
         env:
@@ -298,7 +301,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       # ... your test steps ...
 
@@ -313,10 +316,12 @@ jobs:
           SARIF: ${{ steps.coverage.outputs.sarif }}
         run: printf '%s' "$SARIF" > coverage.sarif
 
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@820e3160e279568db735cee8ed8f8e77a6da7818 # v3
         with:
           sarif_file: coverage.sarif
 ```
+
+For very large codebases, the SARIF output may exceed GitHub's 1 MB action output limit. If you hit this, consider filtering results or splitting coverage by area.
 
 ## PR Comments
 
@@ -330,6 +335,8 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
       # ... your test steps ...
 
       - uses: evansims/coverlint@403f492d058d03ec2b8bee6d791a5316421dbd31 # v1.1.0
@@ -346,11 +353,13 @@ jobs:
           PASSED: ${{ steps.coverage.outputs.passed }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          score=$(echo "$RESULTS" | jq -r '.[-1].score // "N/A"')
+          score=$(echo "$RESULTS" | jq -r '.[-1].score // empty') || exit 0
           status="Pass"
           if [[ "$PASSED" != "true" ]]; then status="**Fail**"; fi
 
-          gh pr comment "$PR_NUMBER" --body "**Coverage:** ${score}% — ${status}"
+          body="<!-- coverlint-coverage -->**Coverage:** ${score}% — ${status}"
+          gh pr comment "$PR_NUMBER" --edit-last --body "$body" 2>/dev/null || \
+            gh pr comment "$PR_NUMBER" --body "$body"
 ```
 
 ## Coverage Badges
@@ -377,7 +386,7 @@ jobs:
     outputs:
       badge-svg: ${{ steps.coverage.outputs.badge-svg }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       # ... your test steps ...
 
@@ -391,10 +400,13 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    concurrency:
+      group: update-badges
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Push coverage badge
         env:

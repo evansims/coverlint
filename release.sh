@@ -11,7 +11,7 @@ usage() {
   echo "  2. Create and push a git tag"
   echo "  3. Wait for the GoReleaser CI workflow to create the GitHub release"
   echo "  4. Update the major version tag (e.g., v1) for Actions marketplace"
-  echo "  5. Update README.md examples with pinned commit SHA"
+  echo "  5. Update README.md examples with pinned commit SHAs (coverlint + third-party actions)"
   exit 1
 }
 
@@ -117,9 +117,43 @@ gh release edit "$tag" --notes "${existing_body}
 
 ${pin_section}"
 
+# Resolve a git tag to its commit SHA, dereferencing annotated tags
+resolve_tag_sha() {
+  local repo="$1" tag="$2"
+  local ref_json sha obj_type
+
+  ref_json=$(gh api "repos/${repo}/git/ref/tags/${tag}" 2>/dev/null) || return 1
+  sha=$(echo "$ref_json" | jq -r '.object.sha')
+  obj_type=$(echo "$ref_json" | jq -r '.object.type')
+
+  if [[ "$obj_type" == "tag" ]]; then
+    sha=$(gh api "repos/${repo}/git/tags/${sha}" --jq '.object.sha' 2>/dev/null) || return 1
+  fi
+
+  echo "$sha"
+}
+
 # Update README.md usage examples with pinned SHA
 echo "Updating README.md with pinned SHA..."
 perl -pi -e "s{uses: evansims/coverlint\@\S+(\s+#\s*\S+)?}{uses: evansims/coverlint\@${commit_sha} # ${tag}}g" README.md
+
+# Update third-party action SHAs to their latest release commits
+echo "Resolving third-party action SHAs..."
+perl -ne 'print "$1 $2\n" if m{uses:\s+(?!evansims/coverlint)(\S+?)\@\S+\s+#\s*(\S+)}' README.md | sort -u | while IFS=' ' read -r action version_tag; do
+  [[ -z "$action" ]] && continue
+
+  # Extract the repo (first two path components, e.g. github/codeql-action from github/codeql-action/upload-sarif)
+  action_repo=$(echo "$action" | cut -d/ -f1,2)
+
+  action_sha=$(resolve_tag_sha "$action_repo" "$version_tag") || {
+    echo "  Warning: could not resolve ${action_repo}@${version_tag}, skipping" >&2
+    continue
+  }
+
+  echo "  ${action}@${version_tag} → ${action_sha:0:7}"
+  perl -pi -e "s{uses: \Q${action}\E\@\S+(\s+#\s*\S+)?}{uses: ${action}\@${action_sha} # ${version_tag}}g" README.md
+done
+
 git add README.md
 if ! git diff --cached --quiet; then
   git commit -m "Pin README examples to ${tag} (${commit_sha:0:7})"
