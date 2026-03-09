@@ -25,7 +25,6 @@ jobs:
         env:
           INPUT_PATH: cover.out
           INPUT_FORMAT: gocover
-          INPUT_NAME: coverlint
           INPUT_THRESHOLD-LINE: "70"
           INPUT_WORKING-DIRECTORY: "."
           INPUT_FAIL-ON-ERROR: "true"

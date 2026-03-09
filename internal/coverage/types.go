@@ -9,7 +9,6 @@ type Threshold struct {
 
 // CoverageResult holds parsed coverage metrics from a report.
 type CoverageResult struct {
-	Name     string
 	Line     *Metric
 	Branch   *Metric
 	Function *Metric

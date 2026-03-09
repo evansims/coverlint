@@ -133,11 +133,16 @@ func Run() error {
 		combined = MergeResults(allParsed)
 		EmitAnnotation("notice", fmt.Sprintf("merged %d coverage reports", len(allParsed)))
 	}
-	combined.Name = inp.Name
-
 	cr := CheckThresholds(combined, &inp.Threshold)
 
-	totalEntry := buildEntryResult(inp.Name, combined)
+	// Single-format: label the row with the format name; multi-format: "Total"
+	var totalLabel string
+	if multiFormat {
+		totalLabel = "Total"
+	} else {
+		totalLabel = inp.Formats[0]
+	}
+	totalEntry := buildEntryResult(totalLabel, combined)
 	totalEntry.Passed = cr.Passed
 
 	// For single-format, the results list is just the total entry
@@ -176,7 +181,7 @@ func Run() error {
 		if totalEntry.Function != nil {
 			parts = append(parts, fmt.Sprintf("function %.1f%%", *totalEntry.Function))
 		}
-		msg := fmt.Sprintf("%s: %s — all thresholds met", inp.Name, strings.Join(parts, ", "))
+		msg := fmt.Sprintf("coverage: %s — all thresholds met", strings.Join(parts, ", "))
 		EmitAnnotation("notice", msg)
 	}
 
@@ -202,7 +207,7 @@ func Run() error {
 	}
 
 	if !cr.Passed && inp.FailOnError {
-		return fmt.Errorf("coverage below threshold for: %s", inp.Name)
+		return fmt.Errorf("coverage below threshold")
 	}
 
 	return nil

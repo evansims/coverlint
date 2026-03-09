@@ -10,7 +10,7 @@ func setInputEnv(t *testing.T, env map[string]string) {
 	t.Helper()
 	// Clear all input env vars first
 	for _, key := range []string{
-		"INPUT_PATH", "INPUT_FORMAT", "INPUT_NAME",
+		"INPUT_PATH", "INPUT_FORMAT",
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_THRESHOLD-LINE", "INPUT_THRESHOLD-BRANCH", "INPUT_THRESHOLD-FUNCTION",
 		"INPUT_SUGGESTIONS",
@@ -39,7 +39,6 @@ func TestRunIntegration(t *testing.T) {
 	setInputEnv(t, map[string]string{
 		"INPUT_PATH":              "basic.info",
 		"INPUT_FORMAT":            "lcov",
-		"INPUT_NAME":              "test",
 		"INPUT_WORKING-DIRECTORY": fixtureDir,
 		"INPUT_FAIL-ON-ERROR":     "true",
 		"INPUT_THRESHOLD-LINE":    "50",
@@ -77,7 +76,6 @@ func TestRunThresholdFailure(t *testing.T) {
 	setInputEnv(t, map[string]string{
 		"INPUT_PATH":              "basic.info",
 		"INPUT_FORMAT":            "lcov",
-		"INPUT_NAME":              "test",
 		"INPUT_WORKING-DIRECTORY": fixtureDir,
 		"INPUT_FAIL-ON-ERROR":     "true",
 		"INPUT_THRESHOLD-LINE":    "80",
@@ -106,7 +104,6 @@ func TestRunFailOnErrorFalse(t *testing.T) {
 	setInputEnv(t, map[string]string{
 		"INPUT_PATH":              "basic.info",
 		"INPUT_FORMAT":            "lcov",
-		"INPUT_NAME":              "test",
 		"INPUT_WORKING-DIRECTORY": fixtureDir,
 		"INPUT_FAIL-ON-ERROR":     "false",
 		"INPUT_THRESHOLD-LINE":    "80",

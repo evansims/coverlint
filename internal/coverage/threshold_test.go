@@ -16,7 +16,6 @@ func TestCheckThresholds(t *testing.T) {
 		{
 			name: "all pass",
 			result: CoverageResult{
-				Name: "test",
 				Line: &Metric{Hit: 85, Total: 100},
 			},
 			threshold:      Threshold{Line: floatPtr(80)},
@@ -26,7 +25,6 @@ func TestCheckThresholds(t *testing.T) {
 		{
 			name: "line fails",
 			result: CoverageResult{
-				Name: "test",
 				Line: &Metric{Hit: 70, Total: 100},
 			},
 			threshold:      Threshold{Line: floatPtr(80)},
@@ -36,7 +34,6 @@ func TestCheckThresholds(t *testing.T) {
 		{
 			name: "multiple failures",
 			result: CoverageResult{
-				Name:     "test",
 				Line:     &Metric{Hit: 70, Total: 100},
 				Branch:   &Metric{Hit: 50, Total: 100},
 				Function: &Metric{Hit: 60, Total: 100},
@@ -48,7 +45,6 @@ func TestCheckThresholds(t *testing.T) {
 		{
 			name: "metric nil but threshold set reports skipped",
 			result: CoverageResult{
-				Name: "test",
 				Line: &Metric{Hit: 90, Total: 100},
 			},
 			threshold:      Threshold{Line: floatPtr(80), Branch: floatPtr(70)},
@@ -59,7 +55,6 @@ func TestCheckThresholds(t *testing.T) {
 		{
 			name: "exactly at threshold passes",
 			result: CoverageResult{
-				Name: "test",
 				Line: &Metric{Hit: 80, Total: 100},
 			},
 			threshold:      Threshold{Line: floatPtr(80)},
@@ -69,7 +64,6 @@ func TestCheckThresholds(t *testing.T) {
 		{
 			name: "multiple skipped thresholds",
 			result: CoverageResult{
-				Name: "test",
 				Line: &Metric{Hit: 90, Total: 100},
 				// Branch and Function nil — e.g. gocover format
 			},

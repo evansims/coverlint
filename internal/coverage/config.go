@@ -9,7 +9,6 @@ import (
 
 // Input holds the parsed and validated action inputs.
 type Input struct {
-	Name        string
 	Path        string
 	Formats     []string
 	WorkDir     string
@@ -29,7 +28,6 @@ var validFormats = map[string]bool{
 // ParseInputs reads action inputs from INPUT_* environment variables and validates them.
 func ParseInputs() (*Input, error) {
 	inp := &Input{
-		Name:        getInput("NAME", ""),
 		Path:        getInput("PATH", ""),
 		WorkDir:     getInput("WORKING-DIRECTORY", "."),
 		FailOnError: getInput("FAIL-ON-ERROR", "true") == "true",
@@ -55,18 +53,6 @@ func ParseInputs() (*Input, error) {
 	if len(inp.Formats) == 0 {
 		return nil, fmt.Errorf("input validation: format is required")
 	}
-
-	if inp.Name == "" {
-		inp.Name = strings.Join(inp.Formats, ", ")
-	}
-
-	// Sanitize name to prevent injection via newlines or control characters
-	inp.Name = strings.Map(func(r rune) rune {
-		if r == '\n' || r == '\r' {
-			return ' '
-		}
-		return r
-	}, inp.Name)
 
 	line, err := parseOptionalFloat(os.Getenv("INPUT_THRESHOLD-LINE"))
 	if err != nil {

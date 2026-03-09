@@ -40,7 +40,6 @@ jobs:
         env:
           INPUT_PATH: cover.out
           INPUT_FORMAT: gocover
-          INPUT_NAME: go-integration
           INPUT_THRESHOLD-LINE: "100"
           INPUT_WORKING-DIRECTORY: testdata/projects/go
           INPUT_FAIL-ON-ERROR: "true"
@@ -71,7 +70,6 @@ jobs:
         env:
           INPUT_PATH: coverage/lcov.info
           INPUT_FORMAT: lcov
-          INPUT_NAME: node-integration
           INPUT_THRESHOLD-LINE: "100"
           INPUT_THRESHOLD-FUNCTION: "100"
           INPUT_WORKING-DIRECTORY: testdata/projects/node
@@ -102,7 +100,6 @@ jobs:
         env:
           INPUT_PATH: coverage.xml
           INPUT_FORMAT: cobertura
-          INPUT_NAME: python-integration
           INPUT_THRESHOLD-LINE: "100"
           INPUT_THRESHOLD-BRANCH: "100"
           INPUT_WORKING-DIRECTORY: testdata/projects/python
@@ -137,7 +134,6 @@ jobs:
         env:
           INPUT_PATH: coverage.xml
           INPUT_FORMAT: clover
-          INPUT_NAME: php-integration
           INPUT_THRESHOLD-LINE: "100"
           INPUT_THRESHOLD-BRANCH: "100"
           INPUT_THRESHOLD-FUNCTION: "100"
@@ -168,7 +164,6 @@ jobs:
         env:
           INPUT_PATH: build/reports/jacoco/test/jacocoTestReport.xml
           INPUT_FORMAT: jacoco
-          INPUT_NAME: java-integration
           INPUT_THRESHOLD-LINE: "100"
           INPUT_THRESHOLD-BRANCH: "100"
           INPUT_THRESHOLD-FUNCTION: "100"
@@ -218,7 +213,6 @@ jobs:
         env:
           INPUT_FORMAT: gocover,lcov,cobertura
           INPUT_PATH: "go-service/cover.out, node-service/coverage/lcov.info, python-service/coverage.xml"
-          INPUT_NAME: monorepo-integration
           INPUT_THRESHOLD-LINE: "80"
           INPUT_WORKING-DIRECTORY: testdata/projects/monorepo
           INPUT_FAIL-ON-ERROR: "true"
@@ -246,7 +240,6 @@ jobs:
         env:
           INPUT_PATH: lcov.info
           INPUT_FORMAT: lcov
-          INPUT_NAME: rust-integration
           INPUT_THRESHOLD-LINE: "100"
           INPUT_THRESHOLD-FUNCTION: "100"
           INPUT_WORKING-DIRECTORY: testdata/projects/rust

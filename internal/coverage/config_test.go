@@ -26,8 +26,7 @@ func TestParseInputs(t *testing.T) {
 			env: map[string]string{
 				"INPUT_PATH":               "lcov.info",
 				"INPUT_FORMAT":             "lcov",
-				"INPUT_NAME":               "backend",
-				"INPUT_THRESHOLD-LINE":     "80",
+					"INPUT_THRESHOLD-LINE":     "80",
 				"INPUT_THRESHOLD-BRANCH":   "70",
 				"INPUT_THRESHOLD-FUNCTION": "75",
 			},
@@ -123,7 +122,7 @@ func TestParseInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear all input env vars
 			for _, key := range []string{
-				"INPUT_PATH", "INPUT_FORMAT", "INPUT_NAME",
+				"INPUT_PATH", "INPUT_FORMAT",
 				"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 				"INPUT_THRESHOLD-LINE", "INPUT_THRESHOLD-BRANCH", "INPUT_THRESHOLD-FUNCTION",
 				"INPUT_SUGGESTIONS",
@@ -164,7 +163,7 @@ func TestParseInputs(t *testing.T) {
 
 func TestParseInputsDefaults(t *testing.T) {
 	for _, key := range []string{
-		"INPUT_PATH", "INPUT_FORMAT", "INPUT_NAME",
+		"INPUT_PATH", "INPUT_FORMAT",
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_THRESHOLD-LINE", "INPUT_THRESHOLD-BRANCH", "INPUT_THRESHOLD-FUNCTION",
 	} {
@@ -180,9 +179,6 @@ func TestParseInputsDefaults(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if inp.Name != "gocover" {
-		t.Errorf("name should default to format, got %q", inp.Name)
-	}
 	if inp.WorkDir != "." {
 		t.Errorf("workdir should default to '.', got %q", inp.WorkDir)
 	}
@@ -191,24 +187,3 @@ func TestParseInputsDefaults(t *testing.T) {
 	}
 }
 
-func TestParseInputsMultiFormatName(t *testing.T) {
-	for _, key := range []string{
-		"INPUT_PATH", "INPUT_FORMAT", "INPUT_NAME",
-		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
-		"INPUT_THRESHOLD-LINE", "INPUT_THRESHOLD-BRANCH", "INPUT_THRESHOLD-FUNCTION",
-	} {
-		t.Setenv(key, "")
-	}
-
-	t.Setenv("INPUT_FORMAT", "gocover,lcov")
-	t.Setenv("INPUT_THRESHOLD-LINE", "80")
-
-	inp, err := ParseInputs()
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if inp.Name != "gocover, lcov" {
-		t.Errorf("name should default to joined formats, got %q", inp.Name)
-	}
-}

@@ -10,10 +10,6 @@ inputs:
   format:
     description: 'Coverage format(s): lcov, gocover, cobertura, clover, jacoco. Comma-separated for monorepos (e.g., "gocover,lcov").'
     required: true
-  name:
-    description: 'Display name for annotations (defaults to format)'
-    required: false
-    default: ''
   threshold-line:
     description: 'Minimum line coverage percentage (0-100)'
     required: false
@@ -104,7 +100,6 @@ runs:
       env:
         INPUT_PATH: ${{ inputs.path }}
         INPUT_FORMAT: ${{ inputs.format }}
-        INPUT_NAME: ${{ inputs.name }}
         INPUT_THRESHOLD-LINE: ${{ inputs.threshold-line }}
         INPUT_THRESHOLD-BRANCH: ${{ inputs.threshold-branch }}
         INPUT_THRESHOLD-FUNCTION: ${{ inputs.threshold-function }}

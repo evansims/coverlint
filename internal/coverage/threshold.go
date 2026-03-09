@@ -12,9 +12,9 @@ type CheckResult struct {
 func CheckThresholds(result *CoverageResult, threshold *Threshold) CheckResult {
 	var cr CheckResult
 
-	checkMetric(&cr, result.Name, "line", result.Line, threshold.Line)
-	checkMetric(&cr, result.Name, "branch", result.Branch, threshold.Branch)
-	checkMetric(&cr, result.Name, "function", result.Function, threshold.Function)
+	checkMetric(&cr, "coverage", "line", result.Line, threshold.Line)
+	checkMetric(&cr, "coverage", "branch", result.Branch, threshold.Branch)
+	checkMetric(&cr, "coverage", "function", result.Function, threshold.Function)
 
 	cr.Passed = len(cr.Violations) == 0
 	return cr

@@ -32,7 +32,6 @@ Add to your workflow after your test step:
 | -------------------- | ------- | -------- | ---------------------------------------------------------- |
 | `format`             |         | yes      | One of: `lcov`, `gocover`, `cobertura`, `clover`, `jacoco` |
 | `path`               |         | no       | Path to coverage report file (auto-discovered if omitted)  |
-| `name`               | format  | no       | Display name for annotations                               |
 | `threshold-line`     |         | no\*     | Minimum line coverage percentage (0-100)                   |
 | `threshold-branch`   |         | no\*     | Minimum branch coverage percentage (0-100)                 |
 | `threshold-function` |         | no\*     | Minimum function coverage percentage (0-100)               |
@@ -152,14 +151,12 @@ Use multiple steps to check different coverage reports:
   with:
     path: cover.out
     format: gocover
-    name: api
     threshold-line: 80
 
 - uses: evansims/coverlint@v1
   with:
     path: coverage/lcov.info
     format: lcov
-    name: frontend
     threshold-line: 85
     threshold-branch: 70
     threshold-function: 80
