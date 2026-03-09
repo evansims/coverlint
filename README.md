@@ -336,7 +336,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
+    outputs:
+      results: ${{ steps.coverage.outputs.results }}
+      passed: ${{ steps.coverage.outputs.passed }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -348,12 +350,18 @@ jobs:
           format: gocover
           min-coverage: 80
 
+  comment:
+    needs: test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
       - name: Comment on PR
-        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-          RESULTS: ${{ steps.coverage.outputs.results }}
-          PASSED: ${{ steps.coverage.outputs.passed }}
+          RESULTS: ${{ needs.test.outputs.results }}
+          PASSED: ${{ needs.test.outputs.passed }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           score=$(echo "$RESULTS" | jq -r '.[-1].score // empty') || exit 0
@@ -367,13 +375,7 @@ jobs:
 
 ## Coverage Badges
 
-Show live coverage in your README — no external services or secrets needed.
-
-<details>
-<summary><strong>Badge workflow</strong></summary>
-
-> [!IMPORTANT]
-> **Why two jobs?** The test job runs with read-only permissions on every push and PR. Only the badge job gets `contents: write`, and only on pushes to `main`. This keeps your PR checks locked down.
+Show live coverage in your README — no external services or secrets needed:
 
 ```yaml
 on:
@@ -435,8 +437,6 @@ jobs:
           git commit -m "Update coverage badge"
           git push origin coverlint
 ```
-
-</details>
 
 Add to your README:
 
