@@ -31,7 +31,7 @@ func (a *Annotator) Emit(level, message string) {
 	if a.config.Mode == "limited" && a.count >= a.config.MaxCount {
 		return
 	}
-	fmt.Fprintf(a.writer, "::%s::%s\n", level, sanitizeWorkflowCommand(message))
+	_, _ = fmt.Fprintf(a.writer, "::%s::%s\n", level, sanitizeWorkflowCommand(message))
 	a.count++
 }
 
