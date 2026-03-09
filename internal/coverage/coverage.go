@@ -52,6 +52,8 @@ func Run() error {
 		return err
 	}
 
+	annotator := NewAnnotator(inp.Annotations, os.Stdout)
+
 	// Parse coverage files grouped by format
 	var perFormat []formatResult
 
@@ -61,7 +63,7 @@ func Run() error {
 		if err != nil {
 			return err
 		}
-		EmitAnnotation("notice", fmt.Sprintf("auto-discovered %d report(s): %s",
+		annotator.Emit("notice", fmt.Sprintf("auto-discovered %d report(s): %s",
 			len(discovered), strings.Join(discovered, ", ")))
 
 		perFormat, err = parseWithFormats(discovered, inp.Formats, inp.WorkDir)
@@ -73,12 +75,12 @@ func Run() error {
 		for _, fr := range perFormat {
 			detectedFormats = append(detectedFormats, fr.Format)
 		}
-		EmitAnnotation("notice", fmt.Sprintf("auto-detected format(s): %s",
+		annotator.Emit("notice", fmt.Sprintf("auto-detected format(s): %s",
 			strings.Join(detectedFormats, ", ")))
 	} else if strings.TrimSpace(inp.Path) == "" {
 		// Explicit formats, auto-discover paths per format
 		for _, format := range inp.Formats {
-			results, err := discoverAndParse(format, inp.WorkDir)
+			results, err := discoverAndParse(format, inp.WorkDir, annotator)
 			if err != nil {
 				return err
 			}
@@ -118,7 +120,7 @@ func Run() error {
 	// Merge all results for the combined/total result
 	combined := MergeResults(allParsed)
 	if len(allParsed) > 1 {
-		EmitAnnotation("notice", fmt.Sprintf("merged %d coverage reports", len(allParsed)))
+		annotator.Emit("notice", fmt.Sprintf("merged %d coverage reports", len(allParsed)))
 	}
 	cr := CheckThresholds(combined, &inp.Threshold)
 	hasThresholds := inp.Threshold.MinCoverage != nil || inp.Threshold.Line != nil || inp.Threshold.Branch != nil || inp.Threshold.Function != nil
@@ -151,7 +153,7 @@ func Run() error {
 	}
 
 	for _, s := range cr.Skipped {
-		EmitAnnotation("notice", fmt.Sprintf("%s: %s threshold configured but not reported by %s format — skipped",
+		annotator.Emit("notice", fmt.Sprintf("%s: %s threshold configured but not reported by %s format — skipped",
 			s.Entry, s.Metric, strings.Join(formatNames, ", ")))
 	}
 
@@ -161,7 +163,7 @@ func Run() error {
 		if !inp.FailOnError {
 			level = "warning"
 		}
-		EmitAnnotation(level, FormatViolation(v))
+		annotator.Emit(level, FormatViolation(v))
 	}
 
 	if cr.Passed {
@@ -180,9 +182,9 @@ func Run() error {
 		}
 		if hasThresholds && len(parts) > 0 {
 			msg := fmt.Sprintf("coverage: %s — all minimums met", strings.Join(parts, ", "))
-			EmitAnnotation("notice", msg)
+			annotator.Emit("notice", msg)
 		} else if len(parts) > 0 {
-			EmitAnnotation("notice", fmt.Sprintf("coverage: %s", strings.Join(parts, ", ")))
+			annotator.Emit("notice", fmt.Sprintf("coverage: %s", strings.Join(parts, ", ")))
 		}
 	}
 
@@ -200,11 +202,11 @@ func Run() error {
 	}
 
 	if err := WriteJobSummary(allResults, totalForSummary != nil, suggestions); err != nil {
-		EmitAnnotation("warning", fmt.Sprintf("failed to write job summary: %v", err))
+		annotator.Emit("warning", fmt.Sprintf("failed to write job summary: %v", err))
 	}
 
 	if err := WriteOutputs(cr.Passed, allResults); err != nil {
-		EmitAnnotation("warning", fmt.Sprintf("failed to write outputs: %v", err))
+		annotator.Emit("warning", fmt.Sprintf("failed to write outputs: %v", err))
 	}
 
 	if !cr.Passed && inp.FailOnError {
@@ -288,7 +290,7 @@ func buildEntryResult(name string, r *CoverageResult, w Weights) EntryResult {
 }
 
 // discoverAndParse auto-discovers and parses coverage files for a single format.
-func discoverAndParse(format, workDir string) ([]*CoverageResult, error) {
+func discoverAndParse(format, workDir string, annotator *Annotator) ([]*CoverageResult, error) {
 	parser, err := getParser(format)
 	if err != nil {
 		return nil, err
@@ -298,7 +300,7 @@ func discoverAndParse(format, workDir string) ([]*CoverageResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	EmitAnnotation("notice", fmt.Sprintf("auto-discovered %d %s report(s): %s",
+	annotator.Emit("notice", fmt.Sprintf("auto-discovered %d %s report(s): %s",
 		len(discovered), format, strings.Join(discovered, ", ")))
 
 	var results []*CoverageResult

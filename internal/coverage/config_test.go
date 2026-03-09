@@ -141,7 +141,7 @@ func TestParseInputs(t *testing.T) {
 				"INPUT_PATH", "INPUT_FORMAT",
 				"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 				"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
-				"INPUT_SUGGESTIONS",
+				"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
 			} {
 				t.Setenv(key, "")
 			}
@@ -182,6 +182,7 @@ func TestParseInputsAutoFormat(t *testing.T) {
 		"INPUT_PATH", "INPUT_FORMAT",
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_ANNOTATIONS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -217,6 +218,7 @@ func TestParseInputsDefaults(t *testing.T) {
 		"INPUT_PATH", "INPUT_FORMAT",
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_ANNOTATIONS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -246,7 +248,7 @@ func TestParseInputsMinCoverage(t *testing.T) {
 			"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 			"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 			"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
-			"INPUT_SUGGESTIONS",
+			"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
 		} {
 			t.Setenv(key, "")
 		}
@@ -348,7 +350,7 @@ func TestParseInputsWeights(t *testing.T) {
 			"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 			"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 			"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
-			"INPUT_SUGGESTIONS",
+			"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
 		} {
 			t.Setenv(key, "")
 		}
@@ -445,7 +447,7 @@ func TestParseInputsInvalidMinBranch(t *testing.T) {
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
-		"INPUT_SUGGESTIONS",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -467,7 +469,7 @@ func TestParseInputsInvalidMinFunction(t *testing.T) {
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
-		"INPUT_SUGGESTIONS",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -489,7 +491,7 @@ func TestParseInputsSuggestionsDefault(t *testing.T) {
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
-		"INPUT_SUGGESTIONS",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -510,7 +512,7 @@ func TestParseInputsSuggestionsDisabled(t *testing.T) {
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
-		"INPUT_SUGGESTIONS",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -523,6 +525,118 @@ func TestParseInputsSuggestionsDisabled(t *testing.T) {
 	}
 	if inp.Suggestions {
 		t.Error("suggestions should be false when set to 'false'")
+	}
+}
+
+func TestParseInputsAnnotationsDefault(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+
+	inp, err := ParseInputs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inp.Annotations.Mode != "all" {
+		t.Errorf("annotations mode = %q, want %q", inp.Annotations.Mode, "all")
+	}
+}
+
+func TestParseInputsAnnotationsFalse(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+	t.Setenv("INPUT_ANNOTATIONS", "false")
+
+	inp, err := ParseInputs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inp.Annotations.Mode != "none" {
+		t.Errorf("annotations mode = %q, want %q", inp.Annotations.Mode, "none")
+	}
+}
+
+func TestParseInputsAnnotationsIntegerCap(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+	t.Setenv("INPUT_ANNOTATIONS", "10")
+
+	inp, err := ParseInputs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inp.Annotations.Mode != "limited" {
+		t.Errorf("annotations mode = %q, want %q", inp.Annotations.Mode, "limited")
+	}
+	if inp.Annotations.MaxCount != 10 {
+		t.Errorf("annotations max count = %d, want 10", inp.Annotations.MaxCount)
+	}
+}
+
+func TestParseInputsAnnotationsInvalid(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+	t.Setenv("INPUT_ANNOTATIONS", "abc")
+
+	_, err := ParseInputs()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "annotations") {
+		t.Errorf("error %q should mention annotations", err.Error())
+	}
+}
+
+func TestParseInputsAnnotationsNegative(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+	t.Setenv("INPUT_ANNOTATIONS", "-1")
+
+	_, err := ParseInputs()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "annotations") {
+		t.Errorf("error %q should mention annotations", err.Error())
 	}
 }
 

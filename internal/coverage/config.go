@@ -24,6 +24,12 @@ func init() {
 	}
 }
 
+// AnnotationConfig controls how annotations are emitted.
+type AnnotationConfig struct {
+	Mode     string // "all", "none", or "limited"
+	MaxCount int    // only used when Mode is "limited"
+}
+
 // Input holds the parsed and validated action inputs.
 type Input struct {
 	Path        string
@@ -32,6 +38,7 @@ type Input struct {
 	WorkDir     string
 	FailOnError bool
 	Suggestions bool
+	Annotations AnnotationConfig
 	Threshold   Threshold
 }
 
@@ -55,6 +62,21 @@ func ParseInputs() (*Input, error) {
 			}
 			inp.Formats = append(inp.Formats, f)
 		}
+	}
+
+	// Parse annotations config
+	annotations := getInput("ANNOTATIONS", "true")
+	switch annotations {
+	case "true":
+		inp.Annotations = AnnotationConfig{Mode: "all"}
+	case "false":
+		inp.Annotations = AnnotationConfig{Mode: "none"}
+	default:
+		n, err := strconv.Atoi(annotations)
+		if err != nil || n < 0 {
+			return nil, fmt.Errorf("input validation: annotations must be 'true', 'false', or a non-negative integer, got %q", annotations)
+		}
+		inp.Annotations = AnnotationConfig{Mode: "limited", MaxCount: n}
 	}
 
 	// Parse min-coverage (weighted score threshold) and per-metric overrides

@@ -48,6 +48,10 @@ inputs:
     description: 'Show top opportunities for coverage improvement in job summary'
     required: false
     default: 'true'
+  annotations:
+    description: 'Annotation output: true (default), false, or a max count'
+    required: false
+    default: 'true'
 
 outputs:
   results:
@@ -133,4 +137,5 @@ runs:
         INPUT_WEIGHT-BRANCH: ${{ inputs.weight-branch }}
         INPUT_WEIGHT-FUNCTION: ${{ inputs.weight-function }}
         INPUT_SUGGESTIONS: ${{ inputs.suggestions }}
+        INPUT_ANNOTATIONS: ${{ inputs.annotations }}
       run: coverlint

@@ -1,6 +1,7 @@
 package coverage
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,7 @@ func setInputEnv(t *testing.T, env map[string]string) {
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
-		"INPUT_SUGGESTIONS",
+		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
 	} {
 		t.Setenv(key, "")
 	}
@@ -499,7 +500,7 @@ func TestDiscoverAndParse(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		results, err := discoverAndParse("gocover", dir)
+		results, err := discoverAndParse("gocover", dir, NewAnnotator(AnnotationConfig{Mode: "none"}, io.Discard))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -512,7 +513,7 @@ func TestDiscoverAndParse(t *testing.T) {
 	})
 
 	t.Run("errors for unknown format", func(t *testing.T) {
-		_, err := discoverAndParse("nonexistent", ".")
+		_, err := discoverAndParse("nonexistent", ".", NewAnnotator(AnnotationConfig{Mode: "none"}, io.Discard))
 		if err == nil {
 			t.Fatal("expected error for unknown format")
 		}
@@ -520,7 +521,7 @@ func TestDiscoverAndParse(t *testing.T) {
 
 	t.Run("errors when no files discovered", func(t *testing.T) {
 		dir := t.TempDir()
-		_, err := discoverAndParse("gocover", dir)
+		_, err := discoverAndParse("gocover", dir, NewAnnotator(AnnotationConfig{Mode: "none"}, io.Discard))
 		if err == nil {
 			t.Fatal("expected error when no files discovered")
 		}
@@ -533,7 +534,7 @@ func TestDiscoverAndParse(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_, err := discoverAndParse("gocover", dir)
+		_, err := discoverAndParse("gocover", dir, NewAnnotator(AnnotationConfig{Mode: "none"}, io.Discard))
 		if err == nil {
 			t.Fatal("expected error when file fails to parse")
 		}
@@ -550,7 +551,7 @@ func TestDiscoverAndParse(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		results, err := discoverAndParse("lcov", dir)
+		results, err := discoverAndParse("lcov", dir, NewAnnotator(AnnotationConfig{Mode: "none"}, io.Discard))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
