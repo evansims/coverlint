@@ -8,13 +8,11 @@ Coverlint parses coverage reports in [five formats](#supported-formats), enforce
 
 ## Supported Formats
 
-| Format           | Flag        | Typical Producer                                     |
-| ---------------- | ----------- | ---------------------------------------------------- |
-| LCOV             | `lcov`      | `cargo llvm-cov`, `c8`, `istanbul`, `jest`, `vitest` |
-| Go cover profile | `gocover`   | `go test -coverprofile`                              |
-| Cobertura XML    | `cobertura` | `pytest-cov`, `istanbul`, `cargo tarpaulin`          |
-| Clover XML       | `clover`    | `phpunit`, some JS tools                             |
-| JaCoCo XML       | `jacoco`    | Gradle/Maven JaCoCo plugin                           |
+- **LCOV** (`lcov`) — `cargo llvm-cov`, `c8`, `istanbul`, `jest`, `vitest`
+- **Go cover profile** (`gocover`) — `go test -coverprofile`
+- **Cobertura XML** (`cobertura`) — `pytest-cov`, `istanbul`, `cargo tarpaulin`
+- **Clover XML** (`clover`) — `phpunit`, some JS tools
+- **JaCoCo XML** (`jacoco`) — Gradle/Maven JaCoCo plugin
 
 ## Usage
 
