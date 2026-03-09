@@ -176,6 +176,54 @@ jobs:
           INPUT_FAIL-ON-ERROR: "true"
         run: ./coverlint
 
+  test-monorepo:
+    needs: build-coverlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverlint-binary
+      - run: chmod +x coverlint
+
+      - name: Generate Go coverage
+        working-directory: testdata/projects/monorepo/go-service
+        run: go test -coverprofile=cover.out ./...
+
+      - name: Install Node dependencies
+        working-directory: testdata/projects/monorepo/node-service
+        run: npm install
+
+      - name: Generate Node coverage
+        working-directory: testdata/projects/monorepo/node-service
+        run: npm test
+
+      - name: Install Python dependencies
+        run: pip install pytest pytest-cov
+
+      - name: Generate Python coverage
+        working-directory: testdata/projects/monorepo/python-service
+        run: pytest --cov=. --cov-branch --cov-report=xml:coverage.xml
+
+      - name: Run coverlint (multi-format with explicit paths)
+        env:
+          INPUT_FORMAT: gocover,lcov,cobertura
+          INPUT_PATH: "go-service/cover.out, node-service/coverage/lcov.info, python-service/coverage.xml"
+          INPUT_NAME: monorepo-integration
+          INPUT_THRESHOLD-LINE: "80"
+          INPUT_WORKING-DIRECTORY: testdata/projects/monorepo
+          INPUT_FAIL-ON-ERROR: "true"
+        run: ./coverlint
+
   test-lcov-rust:
     needs: build-coverlint
     runs-on: ubuntu-latest

@@ -2,7 +2,9 @@ package coverage
 
 // MergeResults combines multiple CoverageResults into one by merging
 // at the line/block level. A line is considered covered if it was hit
-// in ANY of the input reports. All results must be from the same format.
+// in ANY of the input reports. Handles mixed formats (e.g., gocover +
+// lcov in a monorepo) by separating block-based and line-based results,
+// merging each group, then combining the summaries.
 func MergeResults(results []*CoverageResult) *CoverageResult {
 	if len(results) == 0 {
 		return nil
@@ -11,11 +13,28 @@ func MergeResults(results []*CoverageResult) *CoverageResult {
 		return results[0]
 	}
 
-	// Determine merge strategy based on which detail is populated
-	if results[0].BlockDetails != nil {
-		return mergeBlockBased(results)
+	// Separate results by detail type
+	var lineBased, blockBased []*CoverageResult
+	for _, r := range results {
+		if r.BlockDetails != nil {
+			blockBased = append(blockBased, r)
+		} else {
+			lineBased = append(lineBased, r)
+		}
 	}
-	return mergeLineBased(results)
+
+	// If all results use the same strategy, merge directly
+	if len(blockBased) == 0 {
+		return mergeLineBased(lineBased)
+	}
+	if len(lineBased) == 0 {
+		return mergeBlockBased(blockBased)
+	}
+
+	// Mixed formats — merge each group, then combine summaries
+	lineResult := mergeLineBased(lineBased)
+	blockResult := mergeBlockBased(blockBased)
+	return mergeSummaries([]*CoverageResult{lineResult, blockResult})
 }
 
 // mergeLineBased merges results from line-based formats (LCOV, Cobertura, Clover, JaCoCo).
@@ -154,6 +173,67 @@ func computeLineBasedSummary(merged map[string]*FileLineDetail) *CoverageResult 
 	}
 
 	return result
+}
+
+// mergeSummaries combines results from different format families (e.g., line-based
+// and block-based) by additively combining their summary metrics. Since files from
+// different formats never overlap, no deduplication is needed.
+func mergeSummaries(results []*CoverageResult) *CoverageResult {
+	merged := &CoverageResult{}
+
+	var totalLines, hitLines int64
+	var totalBranches, hitBranches int64
+	var totalFuncs, hitFuncs int64
+	var hasLine, hasBranch, hasFunc bool
+
+	for _, r := range results {
+		if r.Line != nil {
+			hasLine = true
+			totalLines += r.Line.Total
+			hitLines += r.Line.Hit
+		}
+		if r.Branch != nil {
+			hasBranch = true
+			totalBranches += r.Branch.Total
+			hitBranches += r.Branch.Hit
+		}
+		if r.Function != nil {
+			hasFunc = true
+			totalFuncs += r.Function.Total
+			hitFuncs += r.Function.Hit
+		}
+		merged.Files = append(merged.Files, r.Files...)
+
+		// Preserve detail data from each group
+		if r.FileDetails != nil {
+			if merged.FileDetails == nil {
+				merged.FileDetails = map[string]*FileLineDetail{}
+			}
+			for k, v := range r.FileDetails {
+				merged.FileDetails[k] = v
+			}
+		}
+		if r.BlockDetails != nil {
+			if merged.BlockDetails == nil {
+				merged.BlockDetails = map[string]map[string]*BlockEntry{}
+			}
+			for k, v := range r.BlockDetails {
+				merged.BlockDetails[k] = v
+			}
+		}
+	}
+
+	if hasLine {
+		merged.Line = &Metric{Hit: hitLines, Total: totalLines}
+	}
+	if hasBranch {
+		merged.Branch = &Metric{Hit: hitBranches, Total: totalBranches}
+	}
+	if hasFunc {
+		merged.Function = &Metric{Hit: hitFuncs, Total: totalFuncs}
+	}
+
+	return merged
 }
 
 // computeBlockBasedSummary recomputes summary metrics from merged gocover block data.

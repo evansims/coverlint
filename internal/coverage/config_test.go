@@ -7,9 +7,10 @@ import (
 
 func TestParseInputs(t *testing.T) {
 	tests := []struct {
-		name    string
-		env     map[string]string
-		wantErr string
+		name        string
+		env         map[string]string
+		wantErr     string
+		wantFormats []string
 	}{
 		{
 			name: "valid minimal",
@@ -18,6 +19,7 @@ func TestParseInputs(t *testing.T) {
 				"INPUT_FORMAT":         "gocover",
 				"INPUT_THRESHOLD-LINE": "80",
 			},
+			wantFormats: []string{"gocover"},
 		},
 		{
 			name: "valid all thresholds",
@@ -29,6 +31,7 @@ func TestParseInputs(t *testing.T) {
 				"INPUT_THRESHOLD-BRANCH":   "70",
 				"INPUT_THRESHOLD-FUNCTION": "75",
 			},
+			wantFormats: []string{"lcov"},
 		},
 		{
 			name: "path optional",
@@ -36,6 +39,23 @@ func TestParseInputs(t *testing.T) {
 				"INPUT_FORMAT":         "lcov",
 				"INPUT_THRESHOLD-LINE": "80",
 			},
+			wantFormats: []string{"lcov"},
+		},
+		{
+			name: "multiple formats",
+			env: map[string]string{
+				"INPUT_FORMAT":         "gocover,lcov",
+				"INPUT_THRESHOLD-LINE": "80",
+			},
+			wantFormats: []string{"gocover", "lcov"},
+		},
+		{
+			name: "multiple formats with spaces",
+			env: map[string]string{
+				"INPUT_FORMAT":         "gocover, lcov, cobertura",
+				"INPUT_THRESHOLD-LINE": "80",
+			},
+			wantFormats: []string{"gocover", "lcov", "cobertura"},
 		},
 		{
 			name: "missing format",
@@ -50,6 +70,14 @@ func TestParseInputs(t *testing.T) {
 			env: map[string]string{
 				"INPUT_PATH":           "cover.out",
 				"INPUT_FORMAT":         "invalid",
+				"INPUT_THRESHOLD-LINE": "80",
+			},
+			wantErr: "not valid",
+		},
+		{
+			name: "one invalid in multi-format",
+			env: map[string]string{
+				"INPUT_FORMAT":         "gocover,invalid",
 				"INPUT_THRESHOLD-LINE": "80",
 			},
 			wantErr: "not valid",
@@ -122,8 +150,13 @@ func TestParseInputs(t *testing.T) {
 			if inp.Path != tt.env["INPUT_PATH"] {
 				t.Errorf("path = %q, want %q", inp.Path, tt.env["INPUT_PATH"])
 			}
-			if inp.Format != tt.env["INPUT_FORMAT"] {
-				t.Errorf("format = %q, want %q", inp.Format, tt.env["INPUT_FORMAT"])
+			if len(inp.Formats) != len(tt.wantFormats) {
+				t.Fatalf("formats = %v, want %v", inp.Formats, tt.wantFormats)
+			}
+			for i, f := range inp.Formats {
+				if f != tt.wantFormats[i] {
+					t.Errorf("formats[%d] = %q, want %q", i, f, tt.wantFormats[i])
+				}
 			}
 		})
 	}
@@ -155,5 +188,27 @@ func TestParseInputsDefaults(t *testing.T) {
 	}
 	if !inp.FailOnError {
 		t.Error("fail-on-error should default to true")
+	}
+}
+
+func TestParseInputsMultiFormatName(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT", "INPUT_NAME",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_THRESHOLD-LINE", "INPUT_THRESHOLD-BRANCH", "INPUT_THRESHOLD-FUNCTION",
+	} {
+		t.Setenv(key, "")
+	}
+
+	t.Setenv("INPUT_FORMAT", "gocover,lcov")
+	t.Setenv("INPUT_THRESHOLD-LINE", "80")
+
+	inp, err := ParseInputs()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if inp.Name != "gocover, lcov" {
+		t.Errorf("name should default to joined formats, got %q", inp.Name)
 	}
 }

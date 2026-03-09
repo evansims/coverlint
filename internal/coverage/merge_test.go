@@ -145,4 +145,58 @@ func TestMergeResults(t *testing.T) {
 			t.Errorf("branch: got {%d/%d}, want {2/2}", result.Branch.Hit, result.Branch.Total)
 		}
 	})
+
+	t.Run("merges mixed format results (line-based + block-based)", func(t *testing.T) {
+		// Simulates monorepo: Go project (block-based) + Node project (line-based)
+		// Detail data must be consistent since merge recomputes from details.
+		goResult := &CoverageResult{
+			BlockDetails: map[string]map[string]*BlockEntry{
+				"main.go": {
+					"1.1,5.1":  {Stmts: 5, Count: 1}, // 5 covered
+					"6.1,10.1": {Stmts: 3, Count: 0}, // 0 covered
+				},
+			},
+		}
+		nodeResult := &CoverageResult{
+			FileDetails: map[string]*FileLineDetail{
+				"index.ts": {
+					Lines:     map[int]int64{1: 1, 2: 1, 3: 0, 4: 1},
+					Branches:  map[string]int64{"1:0:0": 1, "1:0:1": 0},
+					Functions: map[string]int64{"main": 1, "helper": 0},
+				},
+			},
+		}
+
+		result := MergeResults([]*CoverageResult{goResult, nodeResult})
+
+		// Go: 5 covered / 8 total stmts. Node: 3/4 lines hit.
+		// Combined: (5+3)=8 hit / (8+4)=12 total
+		if result.Line == nil {
+			t.Fatal("expected Line metric")
+		}
+		if result.Line.Hit != 8 || result.Line.Total != 12 {
+			t.Errorf("line: got {%d/%d}, want {8/12}", result.Line.Hit, result.Line.Total)
+		}
+
+		// Branch: only from node = 1/2
+		if result.Branch == nil {
+			t.Fatal("expected Branch metric")
+		}
+		if result.Branch.Hit != 1 || result.Branch.Total != 2 {
+			t.Errorf("branch: got {%d/%d}, want {1/2}", result.Branch.Hit, result.Branch.Total)
+		}
+
+		// Function: only from node = 1/2
+		if result.Function == nil {
+			t.Fatal("expected Function metric")
+		}
+		if result.Function.Hit != 1 || result.Function.Total != 2 {
+			t.Errorf("function: got {%d/%d}, want {1/2}", result.Function.Hit, result.Function.Total)
+		}
+
+		// Files: should have both
+		if len(result.Files) != 2 {
+			t.Errorf("expected 2 files, got %d", len(result.Files))
+		}
+	})
 }

@@ -8,7 +8,7 @@ inputs:
     required: false
     default: ''
   format:
-    description: 'Coverage format: lcov, gocover, cobertura, clover, or jacoco'
+    description: 'Coverage format(s): lcov, gocover, cobertura, clover, jacoco. Comma-separated for monorepos (e.g., "gocover,lcov").'
     required: true
   name:
     description: 'Display name for annotations (defaults to format)'

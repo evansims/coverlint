@@ -11,7 +11,7 @@ import (
 type Input struct {
 	Name        string
 	Path        string
-	Format      string
+	Formats     []string
 	WorkDir     string
 	FailOnError bool
 	Suggestions bool
@@ -31,21 +31,33 @@ func ParseInputs() (*Input, error) {
 	inp := &Input{
 		Name:        getInput("NAME", ""),
 		Path:        getInput("PATH", ""),
-		Format:      getInput("FORMAT", ""),
 		WorkDir:     getInput("WORKING-DIRECTORY", "."),
 		FailOnError: getInput("FAIL-ON-ERROR", "true") == "true",
 		Suggestions: getInput("SUGGESTIONS", "true") == "true",
 	}
 
-	if strings.TrimSpace(inp.Format) == "" {
+	formatRaw := getInput("FORMAT", "")
+	if strings.TrimSpace(formatRaw) == "" {
 		return nil, fmt.Errorf("input validation: format is required")
 	}
-	if !validFormats[inp.Format] {
-		return nil, fmt.Errorf("input validation: format %q is not valid (valid: lcov, gocover, cobertura, clover, jacoco)", inp.Format)
+
+	for _, f := range strings.Split(formatRaw, ",") {
+		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
+		if !validFormats[f] {
+			return nil, fmt.Errorf("input validation: format %q is not valid (valid: lcov, gocover, cobertura, clover, jacoco)", f)
+		}
+		inp.Formats = append(inp.Formats, f)
+	}
+
+	if len(inp.Formats) == 0 {
+		return nil, fmt.Errorf("input validation: format is required")
 	}
 
 	if inp.Name == "" {
-		inp.Name = inp.Format
+		inp.Name = strings.Join(inp.Formats, ", ")
 	}
 
 	line, err := parseOptionalFloat(os.Getenv("INPUT_THRESHOLD-LINE"))
