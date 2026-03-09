@@ -3,10 +3,6 @@ package coverage
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"strings"
 	"time"
 )
 
@@ -41,74 +37,18 @@ func GenerateBaseline(results []EntryResult) BaselineData {
 	return bd
 }
 
-// LoadBaseline loads baseline coverage data from a local file or HTTPS URL.
+// LoadBaseline parses baseline coverage data from a raw JSON string.
 func LoadBaseline(source string) (*BaselineData, error) {
-	var data []byte
-	var err error
-
-	if strings.HasPrefix(source, "https://") {
-		data, err = fetchBaselineHTTPS(source)
-	} else {
-		data, err = readBaselineFile(source)
-	}
-	if err != nil {
-		return nil, err
+	if source == "" {
+		return nil, fmt.Errorf("baseline JSON is empty")
 	}
 
 	var bd BaselineData
-	if err := json.Unmarshal(data, &bd); err != nil {
+	if err := json.Unmarshal([]byte(source), &bd); err != nil {
 		return nil, fmt.Errorf("parsing baseline JSON: %w", err)
 	}
 
 	return &bd, nil
-}
-
-func readBaselineFile(path string) ([]byte, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading baseline file %q: %w", path, err)
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-
-	info, err := f.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("reading baseline file %q: %w", path, err)
-	}
-	if info.Size() > maxCoverageFileSize {
-		return nil, fmt.Errorf("baseline file %q exceeds maximum size of %d bytes (%d bytes)", path, maxCoverageFileSize, info.Size())
-	}
-
-	data, err := io.ReadAll(f)
-	if err != nil {
-		return nil, fmt.Errorf("reading baseline file %q: %w", path, err)
-	}
-
-	return data, nil
-}
-
-func fetchBaselineHTTPS(url string) ([]byte, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
-
-	resp, err := client.Get(url) //nolint:gosec // URL is user-provided input validated to be HTTPS
-	if err != nil {
-		return nil, fmt.Errorf("fetching baseline from %q: %w", url, err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetching baseline from %q: HTTP %d", url, resp.StatusCode)
-	}
-
-	data, err := io.ReadAll(io.LimitReader(resp.Body, maxCoverageFileSize))
-	if err != nil {
-		return nil, fmt.Errorf("reading baseline response from %q: %w", url, err)
-	}
-
-	return data, nil
 }
 
 // CompareBaseline checks whether the coverage delta meets the minimum allowed change.

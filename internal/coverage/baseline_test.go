@@ -2,8 +2,6 @@ package coverage
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -50,15 +48,10 @@ func TestGenerateBaseline(t *testing.T) {
 }
 
 func TestLoadBaseline(t *testing.T) {
-	t.Run("from file", func(t *testing.T) {
-		dir := t.TempDir()
-		p := filepath.Join(dir, "baseline.json")
-		data := `{"score":85.5,"line":90.0,"branch":72.0,"timestamp":"2025-01-01T00:00:00Z"}`
-		if err := os.WriteFile(p, []byte(data), 0644); err != nil {
-			t.Fatal(err)
-		}
+	t.Run("valid JSON", func(t *testing.T) {
+		input := `{"score":85.5,"line":90.0,"branch":72.0,"timestamp":"2025-01-01T00:00:00Z"}`
 
-		bd, err := LoadBaseline(p)
+		bd, err := LoadBaseline(input)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -76,21 +69,15 @@ func TestLoadBaseline(t *testing.T) {
 		}
 	})
 
-	t.Run("missing file", func(t *testing.T) {
-		_, err := LoadBaseline("/nonexistent/baseline.json")
+	t.Run("empty string", func(t *testing.T) {
+		_, err := LoadBaseline("")
 		if err == nil {
-			t.Fatal("expected error for missing file")
+			t.Fatal("expected error for empty string")
 		}
 	})
 
 	t.Run("invalid JSON", func(t *testing.T) {
-		dir := t.TempDir()
-		p := filepath.Join(dir, "baseline.json")
-		if err := os.WriteFile(p, []byte("not json"), 0644); err != nil {
-			t.Fatal(err)
-		}
-
-		_, err := LoadBaseline(p)
+		_, err := LoadBaseline("not json")
 		if err == nil {
 			t.Fatal("expected error for invalid JSON")
 		}

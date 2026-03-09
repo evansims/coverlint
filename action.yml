@@ -53,7 +53,7 @@ inputs:
     required: false
     default: 'true'
   baseline:
-    description: 'Path or HTTPS URL to previous baseline JSON for delta comparison'
+    description: 'JSON string of previous baseline data for delta comparison'
     required: false
     default: ''
   min-delta:
