@@ -97,7 +97,7 @@ runs:
         # COVERLINT_VERSION is stamped by release.sh at release time.
         # It serves as the fallback when github.action_ref is a commit SHA
         # (i.e., the action is pinned by SHA rather than by tag).
-        COVERLINT_VERSION: "v1.2.5"
+        COVERLINT_VERSION: "v0.0.0-dev"
       run: |
         os="$RUNNER_OS_INPUT"
         arch="$RUNNER_ARCH_INPUT"
