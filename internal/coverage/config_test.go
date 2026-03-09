@@ -409,5 +409,212 @@ func TestParseInputsWeights(t *testing.T) {
 			t.Errorf("error %q should mention weight-line", err.Error())
 		}
 	})
+
+	t.Run("invalid weight-branch", func(t *testing.T) {
+		clear(t)
+		t.Setenv("INPUT_FORMAT", "gocover")
+		t.Setenv("INPUT_WEIGHT-BRANCH", "xyz")
+
+		_, err := ParseInputs()
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "weight-branch") {
+			t.Errorf("error %q should mention weight-branch", err.Error())
+		}
+	})
+
+	t.Run("invalid weight-function", func(t *testing.T) {
+		clear(t)
+		t.Setenv("INPUT_FORMAT", "gocover")
+		t.Setenv("INPUT_WEIGHT-FUNCTION", "xyz")
+
+		_, err := ParseInputs()
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "weight-function") {
+			t.Errorf("error %q should mention weight-function", err.Error())
+		}
+	})
+}
+
+func TestParseInputsInvalidMinBranch(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+	t.Setenv("INPUT_MIN-BRANCH", "abc")
+
+	_, err := ParseInputs()
+	if err == nil {
+		t.Fatal("expected error for invalid min-branch")
+	}
+	if !strings.Contains(err.Error(), "min-branch") {
+		t.Errorf("error should mention min-branch: %v", err)
+	}
+}
+
+func TestParseInputsInvalidMinFunction(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+	t.Setenv("INPUT_MIN-FUNCTION", "abc")
+
+	_, err := ParseInputs()
+	if err == nil {
+		t.Fatal("expected error for invalid min-function")
+	}
+	if !strings.Contains(err.Error(), "min-function") {
+		t.Errorf("error should mention min-function: %v", err)
+	}
+}
+
+func TestParseInputsSuggestionsDefault(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+
+	inp, err := ParseInputs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !inp.Suggestions {
+		t.Error("suggestions should default to true")
+	}
+}
+
+func TestParseInputsSuggestionsDisabled(t *testing.T) {
+	for _, key := range []string{
+		"INPUT_PATH", "INPUT_FORMAT",
+		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+		"INPUT_SUGGESTIONS",
+	} {
+		t.Setenv(key, "")
+	}
+	t.Setenv("INPUT_FORMAT", "gocover")
+	t.Setenv("INPUT_SUGGESTIONS", "false")
+
+	inp, err := ParseInputs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inp.Suggestions {
+		t.Error("suggestions should be false when set to 'false'")
+	}
+}
+
+func TestSplitList(t *testing.T) {
+	tests := []struct {
+		input string
+		want  []string
+	}{
+		{"", nil},
+		{"a,b,c", []string{"a", "b", "c"}},
+		{"a, b, c", []string{"a", "b", "c"}},
+		{"a\nb\nc", []string{"a", "b", "c"}},
+		{"a,b\nc", []string{"a", "b", "c"}},
+		{" a , b ", []string{"a", "b"}},
+		{"a,,b", []string{"a", "b"}},
+		{"\n\n", nil},
+		{"single", []string{"single"}},
+	}
+	for _, tt := range tests {
+		got := splitList(tt.input)
+		if len(got) != len(tt.want) {
+			t.Errorf("splitList(%q) = %v, want %v", tt.input, got, tt.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != tt.want[i] {
+				t.Errorf("splitList(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.want[i])
+			}
+		}
+	}
+}
+
+func TestGetInput(t *testing.T) {
+	t.Run("returns env value", func(t *testing.T) {
+		t.Setenv("INPUT_TEST-KEY", "myvalue")
+		got := getInput("TEST-KEY", "default")
+		if got != "myvalue" {
+			t.Errorf("got %q, want %q", got, "myvalue")
+		}
+	})
+
+	t.Run("returns default when empty", func(t *testing.T) {
+		t.Setenv("INPUT_TEST-KEY2", "")
+		got := getInput("TEST-KEY2", "default")
+		if got != "default" {
+			t.Errorf("got %q, want %q", got, "default")
+		}
+	})
+}
+
+func TestParseOptionalFloat(t *testing.T) {
+	tests := []struct {
+		input   string
+		want    *float64
+		wantErr bool
+	}{
+		{"", nil, false},
+		{"  ", nil, false},
+		{"50", floatPtr(50), false},
+		{"0", floatPtr(0), false},
+		{"100", floatPtr(100), false},
+		{"75.5", floatPtr(75.5), false},
+		{"-1", nil, true},
+		{"101", nil, true},
+		{"abc", nil, true},
+	}
+	for _, tt := range tests {
+		got, err := parseOptionalFloat(tt.input)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("parseOptionalFloat(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			continue
+		}
+		if tt.wantErr {
+			continue
+		}
+		if tt.want == nil && got != nil {
+			t.Errorf("parseOptionalFloat(%q) = %v, want nil", tt.input, got)
+		} else if tt.want != nil && (got == nil || *got != *tt.want) {
+			t.Errorf("parseOptionalFloat(%q) = %v, want %v", tt.input, got, *tt.want)
+		}
+	}
+}
+
+func TestFormatOrderAndParsersInSync(t *testing.T) {
+	// Verify the invariant that init() checks
+	if len(formatOrder) != len(parsers) {
+		t.Errorf("formatOrder has %d entries, parsers has %d", len(formatOrder), len(parsers))
+	}
+	for _, f := range formatOrder {
+		if _, ok := parsers[f]; !ok {
+			t.Errorf("formatOrder contains %q but parsers does not", f)
+		}
+	}
 }
 

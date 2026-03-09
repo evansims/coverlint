@@ -107,6 +107,119 @@ func TestWriteOutputs(t *testing.T) {
 	}
 }
 
+func TestWriteOutputsWithBadge(t *testing.T) {
+	outputFile := filepath.Join(t.TempDir(), "github_output")
+	if err := os.WriteFile(outputFile, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITHUB_OUTPUT", outputFile)
+
+	score := 85.0
+	line := 90.0
+	results := []EntryResult{
+		{Name: "total", Score: &score, Line: &line, Passed: true},
+	}
+
+	if err := WriteOutputs(true, results); err != nil {
+		t.Fatalf("WriteOutputs() error: %v", err)
+	}
+
+	data, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+
+	// Should have badge SVG output
+	if !strings.Contains(content, "badge-svg<<COVERLINT_SVG_EOF") {
+		t.Error("output should contain badge-svg with SVG delimiter")
+	}
+	if !strings.Contains(content, "<svg") {
+		t.Error("output should contain SVG content")
+	}
+
+	// Should have badge JSON output
+	if !strings.Contains(content, "badge-json=") {
+		t.Error("output should contain badge-json")
+	}
+	if !strings.Contains(content, `"coverage"`) {
+		t.Error("badge-json should contain coverage label")
+	}
+	// Badge should use rounded whole numbers
+	if !strings.Contains(content, `"85%"`) {
+		t.Error("badge-json should contain rounded percentage '85%'")
+	}
+}
+
+func TestWriteOutputsPassedFalse(t *testing.T) {
+	outputFile := filepath.Join(t.TempDir(), "github_output")
+	if err := os.WriteFile(outputFile, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITHUB_OUTPUT", outputFile)
+
+	results := []EntryResult{
+		{Name: "backend", Passed: false},
+	}
+
+	if err := WriteOutputs(false, results); err != nil {
+		t.Fatalf("WriteOutputs() error: %v", err)
+	}
+
+	data, _ := os.ReadFile(outputFile)
+	content := string(data)
+
+	if !strings.Contains(content, "passed=false") {
+		t.Errorf("output should contain 'passed=false', got: %s", content)
+	}
+}
+
+func TestWriteOutputsNoScore(t *testing.T) {
+	outputFile := filepath.Join(t.TempDir(), "github_output")
+	if err := os.WriteFile(outputFile, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITHUB_OUTPUT", outputFile)
+
+	// Entry without Score — should not produce badge outputs
+	results := []EntryResult{
+		{Name: "test", Passed: true},
+	}
+
+	if err := WriteOutputs(true, results); err != nil {
+		t.Fatalf("WriteOutputs() error: %v", err)
+	}
+
+	data, _ := os.ReadFile(outputFile)
+	content := string(data)
+
+	if strings.Contains(content, "badge-svg") {
+		t.Error("should not contain badge-svg when no score")
+	}
+	if strings.Contains(content, "badge-json") {
+		t.Error("should not contain badge-json when no score")
+	}
+}
+
+func TestWriteOutputsEmptyResults(t *testing.T) {
+	outputFile := filepath.Join(t.TempDir(), "github_output")
+	if err := os.WriteFile(outputFile, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITHUB_OUTPUT", outputFile)
+
+	if err := WriteOutputs(true, nil); err != nil {
+		t.Fatalf("WriteOutputs() error: %v", err)
+	}
+
+	data, _ := os.ReadFile(outputFile)
+	content := string(data)
+
+	if !strings.Contains(content, "passed=true") {
+		t.Error("should still write passed output")
+	}
+}
+
 func TestWriteJobSummaryOmitsUnsupportedColumns(t *testing.T) {
 	summaryFile := filepath.Join(t.TempDir(), "summary.md")
 	if err := os.WriteFile(summaryFile, nil, 0644); err != nil {
@@ -193,6 +306,63 @@ func TestWriteJobSummaryMultiFormatTotal(t *testing.T) {
 	}
 }
 
+func TestWriteJobSummaryWithSuggestions(t *testing.T) {
+	summaryFile := filepath.Join(t.TempDir(), "summary.md")
+	if err := os.WriteFile(summaryFile, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITHUB_STEP_SUMMARY", summaryFile)
+
+	line := 60.0
+	results := []EntryResult{
+		{Name: "test", Line: &line, Passed: true},
+	}
+	suggestions := []Suggestion{
+		{Path: "big.go", UncoveredLines: 50, TotalLines: 100, LinePct: 50.0},
+	}
+
+	if err := WriteJobSummary(results, false, suggestions); err != nil {
+		t.Fatalf("WriteJobSummary() error: %v", err)
+	}
+
+	data, _ := os.ReadFile(summaryFile)
+	content := string(data)
+	if !strings.Contains(content, "Top Opportunities") {
+		t.Error("summary should contain suggestions section")
+	}
+	if !strings.Contains(content, "big.go") {
+		t.Error("summary should contain suggestion file")
+	}
+}
+
+func TestWriteJobSummaryTotalPassedFalse(t *testing.T) {
+	summaryFile := filepath.Join(t.TempDir(), "summary.md")
+	if err := os.WriteFile(summaryFile, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITHUB_STEP_SUMMARY", summaryFile)
+
+	line1 := 90.0
+	totalLine := 85.0
+
+	results := []EntryResult{
+		{Name: "gocover", Line: &line1, Passed: true},
+		{Name: "Total", Line: &totalLine, Passed: false},
+	}
+
+	if err := WriteJobSummary(results, true, nil); err != nil {
+		t.Fatalf("WriteJobSummary() error: %v", err)
+	}
+
+	data, _ := os.ReadFile(summaryFile)
+	content := string(data)
+
+	// Total row should show **Fail** when Passed is false
+	if !strings.Contains(content, "**Fail**") {
+		t.Error("total row should show Fail when not passed")
+	}
+}
+
 func TestSanitizeWorkflowCommand(t *testing.T) {
 	tests := []struct {
 		input string
@@ -242,5 +412,45 @@ func TestWriteOutputsNoEnvVar(t *testing.T) {
 	err := WriteOutputs(true, nil)
 	if err != nil {
 		t.Fatalf("should not error when GITHUB_OUTPUT is empty: %v", err)
+	}
+}
+
+func TestFmtPct(t *testing.T) {
+	tests := []struct {
+		input *float64
+		want  string
+	}{
+		{nil, "N/A"},
+		{floatPtr(0.0), "0.0%"},
+		{floatPtr(82.5), "82.5%"},
+		{floatPtr(100.0), "100.0%"},
+	}
+	for _, tt := range tests {
+		got := fmtPct(tt.input)
+		if got != tt.want {
+			t.Errorf("fmtPct(%v) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestWriteOutputsInvalidPath(t *testing.T) {
+	t.Setenv("GITHUB_OUTPUT", "/nonexistent/dir/output")
+	err := WriteOutputs(true, nil)
+	if err == nil {
+		t.Fatal("expected error for invalid output path")
+	}
+	if !strings.Contains(err.Error(), "opening output file") {
+		t.Errorf("error should mention opening: %v", err)
+	}
+}
+
+func TestWriteJobSummaryInvalidPath(t *testing.T) {
+	t.Setenv("GITHUB_STEP_SUMMARY", "/nonexistent/dir/summary")
+	err := WriteJobSummary(nil, false, nil)
+	if err == nil {
+		t.Fatal("expected error for invalid summary path")
+	}
+	if !strings.Contains(err.Error(), "opening step summary file") {
+		t.Errorf("error should mention opening: %v", err)
 	}
 }

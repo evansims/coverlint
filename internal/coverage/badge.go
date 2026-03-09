@@ -67,7 +67,7 @@ func GenerateBadgeJSON(pct float64) string {
 	endpoint := shieldsEndpoint{
 		SchemaVersion: 1,
 		Label:         "coverage",
-		Message:       fmt.Sprintf("%.1f%%", pct),
+		Message:       fmt.Sprintf("%.0f%%", pct),
 		Color:         badgeColor(pct),
 	}
 	data, _ := json.Marshal(endpoint)
@@ -80,7 +80,7 @@ func GenerateBadgeJSON(pct float64) string {
 func GenerateBadgeSVG(pct float64) string {
 	pct = clampPct(pct)
 	label := "coverage"
-	value := fmt.Sprintf("%.1f%%", pct)
+	value := fmt.Sprintf("%.0f%%", pct)
 	color := badgeColorHex(pct)
 
 	// Approximate text widths using Verdana 11px metrics.

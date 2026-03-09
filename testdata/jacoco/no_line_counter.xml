@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report name="NoLineProject">
+  <counter type="BRANCH" missed="5" covered="10"/>
+  <counter type="METHOD" missed="2" covered="8"/>
+</report>
