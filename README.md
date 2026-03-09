@@ -1,6 +1,6 @@
 # Coverlint
 
-![Coverage](https://raw.githubusercontent.com/evansims/coverlint/coverlint/coverage.svg)
+![Coverage](https://raw.githubusercontent.com/evansims/coverlint/coverage/coverage.svg)
 
 Coverage checks for GitHub Actions — no external services, no secrets, no accounts. Add one step to your workflow, set a threshold, and get pass/fail results with annotations and a job summary.
 

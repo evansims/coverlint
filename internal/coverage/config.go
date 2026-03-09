@@ -128,10 +128,10 @@ func ParseInputs() (*Input, error) {
 
 	// Parse SARIF: "true" uses default max, a number sets a custom max, anything else disables
 	sarifStr := strings.TrimSpace(getInput("SARIF", "false"))
-	switch {
-	case sarifStr == "true":
+	switch sarifStr {
+	case "true":
 		inp.SARIFMaxResults = defaultSARIFMaxResults
-	case sarifStr == "" || sarifStr == "false":
+	case "", "false":
 		inp.SARIFMaxResults = 0
 	default:
 		sarifMax, err := strconv.Atoi(sarifStr)
