@@ -2,7 +2,7 @@
 
 ![Coverage](https://raw.githubusercontent.com/evansims/coverlint/badges/coverage.svg)
 
-A self-contained GitHub Action that parses coverage reports, enforces thresholds, and reports results as GitHub Actions annotations and job summaries. No external services, secrets, or other headaches — just pass/fail.
+A self-contained GitHub Action that parses coverage reports, enforces thresholds, and reports results as GitHub Actions annotations and job summaries. No external services or secrets required — just pass/fail.
 
 ## Supported Formats
 
@@ -16,13 +16,13 @@ A self-contained GitHub Action that parses coverage reports, enforces thresholds
 
 ## Usage
 
-Add coverlint after your test step. With no inputs, it auto-detects the format, finds the report, and prints coverage without failing:
+Add coverlint after your test step. With no inputs, it auto-detects the format, finds the report, and reports coverage without enforcing a threshold — useful for tracking trends before committing to a minimum:
 
 ```yaml
 - uses: evansims/coverlint@v1
 ```
 
-To enforce a minimum, set `min-coverage` — a weighted score across line, branch, and function coverage:
+To enforce a minimum, set `min-coverage` — a combined score across line, branch, and function coverage (see [Custom Weights](#custom-weights) for how the score is computed):
 
 ```yaml
 - uses: evansims/coverlint@v1
@@ -38,8 +38,6 @@ Setting `format` explicitly is faster and avoids guesswork when files share name
     format: lcov
     min-coverage: 80
 ```
-
-Releases use [immutable tags](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases). [Pin actions by commit SHA](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) and use [Dependabot](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/about-dependabot-version-updates) to keep them current.
 
 ## Quick Start by Language
 
@@ -149,8 +147,6 @@ Releases use [immutable tags](https://docs.github.com/en/repositories/releasing-
     min-coverage: 80
 ```
 
-Without any minimums, coverlint reports coverage without failing — useful for tracking trends before committing to a threshold.
-
 ### Custom Weights
 
 Weights are relative — adjust them to match what matters to your project:
@@ -177,7 +173,7 @@ Use `min-line`, `min-branch`, or `min-function` to enforce hard floors on indivi
     min-branch: 60 # fails if branch drops below 60%, even if the overall score passes
 ```
 
-If you set a floor that your format doesn't support (e.g. `min-branch` with `gocover`), it's skipped with a notice.
+If you set a floor that your format doesn't support (e.g. `min-branch` with `gocover`), it's skipped with a warning annotation.
 
 ### Per-Area Thresholds
 
@@ -199,7 +195,7 @@ Use separate steps when parts of your project need different bars:
 
 ## Monorepo
 
-Combine coverage from multiple languages in one step — the job summary breaks down each format with a combined total:
+Combine coverage from multiple languages in one step — the job summary breaks down each format with a combined total. Use YAML block scalars (`|`) to pass multiple values:
 
 ```yaml
 - uses: evansims/coverlint@v1
@@ -277,7 +273,7 @@ The `results` JSON has one entry per format, each with a weighted `score` and av
 ]
 ```
 
-Use `fromJSON()` to read values in later steps:
+Use GitHub Actions' `fromJSON()` expression to read values in later steps:
 
 ```yaml
 - run: echo "Line coverage is ${{ fromJSON(steps.coverage.outputs.results)[0].line }}%"
@@ -287,7 +283,10 @@ Use `fromJSON()` to read values in later steps:
 
 Show live coverage in your README — no external services or secrets needed.
 
-The workflow below uses two jobs so that only the badge job gets write access. The test job runs on every push and PR with read-only permissions; the badge job only runs on `main`:
+> **Why two jobs?** The test job runs with read-only permissions on every push and PR. Only the badge job gets `contents: write`, and only on pushes to `main`. This keeps your PR checks locked down.
+
+<details>
+<summary><strong>Badge workflow</strong></summary>
 
 ```yaml
 on:
@@ -347,6 +346,8 @@ jobs:
           git push origin badges
 ```
 
+</details>
+
 Add to your README:
 
 ```markdown
@@ -358,6 +359,10 @@ Prefer [shields.io](https://shields.io) styling? Use `badge-json` instead:
 ```markdown
 ![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/badges/coverage.json)
 ```
+
+## Pinning
+
+Releases use [immutable tags](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases). For production workflows, [pin actions by commit SHA](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) and use [Dependabot](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/about-dependabot-version-updates) to keep them current.
 
 ## Contributing
 
