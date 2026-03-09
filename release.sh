@@ -186,9 +186,94 @@ git push origin "$major" --force
 commit_sha=$(git rev-parse "$tag")
 repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 
-# Append SHA pinning guidance to the GitHub Release body (still a draft, so mutable)
-echo "Updating release notes with SHA pinning guidance..."
-existing_body=$(gh release view "$tag" --json body -q .body 2>/dev/null || true)
+# Generate changelog from conventional commits since the previous tag
+echo "Generating changelog..."
+prev_tag=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | grep -v "^${tag}$" | head -1 || true)
+if [[ -n "$prev_tag" ]]; then
+  log_range="${prev_tag}..${tag}"
+  compare_url="https://github.com/${repo}/compare/${prev_tag}...${tag}"
+else
+  log_range="$tag"
+  compare_url=""
+fi
+
+# Collect commits grouped by conventional commit type.
+# Uses temp files per category for bash 3.2 compatibility (no associative arrays).
+changelog_dir=$(mktemp -d)
+trap 'rm -rf "$changelog_dir"' EXIT
+
+while IFS= read -r line; do
+  [[ -z "$line" ]] && continue
+  sha="${line%% *}"
+  msg="${line#* }"
+  short_sha="${sha:0:7}"
+
+  # Skip release machinery commits
+  case "$msg" in
+    release:*|"chore(release):"*) continue ;;
+  esac
+
+  # Parse conventional commit prefix
+  type="other"
+  desc="$msg"
+  case "$msg" in
+    feat\(*\):*|feat:*)       type="feat" ;;
+    fix\(*\):*|fix:*)         type="fix" ;;
+    security\(*\):*|security:*) type="security" ;;
+    perf\(*\):*|perf:*)       type="perf" ;;
+    refactor\(*\):*|refactor:*) type="refactor" ;;
+    docs\(*\):*|docs:*)       type="docs" ;;
+    test\(*\):*|test:*)       type="test" ;;
+    ci\(*\):*|ci:*)           type="ci" ;;
+    build\(*\):*|build:*)     type="build" ;;
+    chore\(*\):*|chore:*)     type="chore" ;;
+  esac
+
+  # Strip the type prefix to get the description
+  if [[ "$type" != "other" ]]; then
+    desc="${msg#*: }"
+  fi
+
+  echo "- ${desc} (${short_sha})" >> "${changelog_dir}/${type}"
+done < <(git log --format="%H %s" "$log_range" --)
+
+# Build the changelog body in display order
+changelog=""
+for pair in \
+  "feat:Features" \
+  "fix:Bug Fixes" \
+  "security:Security" \
+  "perf:Performance" \
+  "refactor:Refactoring" \
+  "docs:Documentation" \
+  "test:Tests" \
+  "ci:CI/CD" \
+  "build:Build" \
+  "chore:Maintenance" \
+  "other:Other"; do
+  key="${pair%%:*}"
+  heading="${pair#*:}"
+  if [[ -f "${changelog_dir}/${key}" ]]; then
+    changelog="${changelog}### ${heading}
+
+$(cat "${changelog_dir}/${key}")
+
+"
+  fi
+done
+
+# Build the full release body
+compare_line=""
+if [[ -n "$compare_url" ]]; then
+  compare_line="**Full Changelog**: ${compare_url}
+
+"
+fi
+
+release_body="## What's Changed
+
+${changelog}${compare_line}"
+
 pin_section="## SHA Pinning
 
 For security hardening, pin to the exact commit SHA for this release:
@@ -199,9 +284,10 @@ For security hardening, pin to the exact commit SHA for this release:
 
 See [GitHub's guide on security hardening](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions) for details."
 
-gh release edit "$tag" --notes "${existing_body}
+release_body+="${pin_section}"
 
-${pin_section}"
+echo "Updating release notes..."
+gh release edit "$tag" --notes "${release_body}"
 
 # Publish the release (transitions from draft to published; immutable after this)
 echo "Publishing release ${tag}..."
