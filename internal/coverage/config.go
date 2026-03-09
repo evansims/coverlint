@@ -42,6 +42,7 @@ type Input struct {
 	Threshold   Threshold
 	Baseline    string
 	MinDelta    *float64
+	SARIF       string
 }
 
 // ParseInputs reads action inputs from INPUT_* environment variables and validates them.
@@ -124,6 +125,9 @@ func ParseInputs() (*Input, error) {
 		MinCoverage: minCoverage,
 		Weights:     weights,
 	}
+
+	// Parse SARIF output path
+	inp.SARIF = getInput("SARIF", "")
 
 	// Parse baseline and min-delta inputs
 	inp.Baseline = getInput("BASELINE", "")

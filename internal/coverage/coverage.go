@@ -218,6 +218,19 @@ func Run() error {
 		suggestions = RankSuggestions(combined.Files)
 	}
 
+	// Generate SARIF report if configured
+	var sarifOutputPath string
+	if inp.SARIF != "" {
+		sarifPath := filepath.Join(inp.WorkDir, inp.SARIF)
+		sarifDoc := GenerateSARIF(combined.Files, combined.FileDetails, combined.BlockDetails)
+		if err := WriteSARIFFile(sarifDoc, sarifPath); err != nil {
+			annotator.Emit("warning", fmt.Sprintf("failed to write SARIF: %v", err))
+		} else {
+			annotator.Emit("notice", fmt.Sprintf("SARIF report written to %s", inp.SARIF))
+			sarifOutputPath = sarifPath
+		}
+	}
+
 	// Write job summary and outputs
 	// For multi-format, include per-format rows + total footer
 	allResults := resultsForOutput
@@ -234,7 +247,7 @@ func Run() error {
 	bd := GenerateBaseline(allResults)
 	baselineOutput = &bd
 
-	if err := WriteOutputs(cr.Passed, allResults, baselineOutput); err != nil {
+	if err := WriteOutputs(cr.Passed, allResults, baselineOutput, sarifOutputPath); err != nil {
 		annotator.Emit("warning", fmt.Sprintf("failed to write outputs: %v", err))
 	}
 

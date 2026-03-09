@@ -52,6 +52,10 @@ inputs:
     description: 'Annotation output: true (default), false, or a max count'
     required: false
     default: 'true'
+  sarif:
+    description: 'File path for SARIF output. Upload separately with github/codeql-action/upload-sarif.'
+    required: false
+    default: ''
   baseline:
     description: 'JSON string of previous baseline data for delta comparison'
     required: false
@@ -77,6 +81,9 @@ outputs:
   baseline:
     description: 'JSON baseline data for the current run, suitable for storage and future comparison'
     value: ${{ steps.run.outputs.baseline }}
+  sarif:
+    description: 'Path to the generated SARIF file (echoes the sarif input)'
+    value: ${{ steps.run.outputs.sarif }}
 
 runs:
   using: "composite"
@@ -151,4 +158,5 @@ runs:
         INPUT_ANNOTATIONS: ${{ inputs.annotations }}
         INPUT_BASELINE: ${{ inputs.baseline }}
         INPUT_MIN-DELTA: ${{ inputs.min-delta }}
+        INPUT_SARIF: ${{ inputs.sarif }}
       run: coverlint

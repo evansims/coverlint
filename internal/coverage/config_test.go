@@ -142,7 +142,7 @@ func TestParseInputs(t *testing.T) {
 				"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 				"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 				"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-				"INPUT_BASELINE", "INPUT_MIN-DELTA",
+				"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 			} {
 				t.Setenv(key, "")
 			}
@@ -184,7 +184,7 @@ func TestParseInputsAutoFormat(t *testing.T) {
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -221,7 +221,7 @@ func TestParseInputsDefaults(t *testing.T) {
 		"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -252,7 +252,7 @@ func TestParseInputsMinCoverage(t *testing.T) {
 			"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 			"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 			"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-			"INPUT_BASELINE", "INPUT_MIN-DELTA",
+			"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 		} {
 			t.Setenv(key, "")
 		}
@@ -355,7 +355,7 @@ func TestParseInputsWeights(t *testing.T) {
 			"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 			"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 			"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-			"INPUT_BASELINE", "INPUT_MIN-DELTA",
+			"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 		} {
 			t.Setenv(key, "")
 		}
@@ -453,7 +453,7 @@ func TestParseInputsInvalidMinBranch(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -476,7 +476,7 @@ func TestParseInputsInvalidMinFunction(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -499,7 +499,7 @@ func TestParseInputsSuggestionsDefault(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -521,7 +521,7 @@ func TestParseInputsSuggestionsDisabled(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -544,7 +544,7 @@ func TestParseInputsAnnotationsDefault(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -566,7 +566,7 @@ func TestParseInputsAnnotationsFalse(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -589,7 +589,7 @@ func TestParseInputsAnnotationsIntegerCap(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -615,7 +615,7 @@ func TestParseInputsAnnotationsInvalid(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -638,7 +638,7 @@ func TestParseInputsAnnotationsNegative(t *testing.T) {
 		"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 		"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 		"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-		"INPUT_BASELINE", "INPUT_MIN-DELTA",
+		"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 	} {
 		t.Setenv(key, "")
 	}
@@ -743,7 +743,7 @@ func TestParseInputsBaseline(t *testing.T) {
 			"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
 			"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
 			"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
-			"INPUT_BASELINE", "INPUT_MIN-DELTA",
+			"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
 		} {
 			t.Setenv(key, "")
 		}
@@ -842,6 +842,49 @@ func TestParseInputsBaseline(t *testing.T) {
 		}
 		if inp.Baseline != "" {
 			t.Errorf("Baseline = %q, want empty", inp.Baseline)
+		}
+	})
+}
+
+func TestParseInputsSARIF(t *testing.T) {
+	clear := func(t *testing.T) {
+		t.Helper()
+		for _, key := range []string{
+			"INPUT_PATH", "INPUT_FORMAT",
+			"INPUT_WORKING-DIRECTORY", "INPUT_FAIL-ON-ERROR",
+			"INPUT_MIN-COVERAGE", "INPUT_MIN-LINE", "INPUT_MIN-BRANCH", "INPUT_MIN-FUNCTION",
+			"INPUT_WEIGHT-LINE", "INPUT_WEIGHT-BRANCH", "INPUT_WEIGHT-FUNCTION",
+			"INPUT_SUGGESTIONS", "INPUT_ANNOTATIONS",
+			"INPUT_BASELINE", "INPUT_MIN-DELTA", "INPUT_SARIF",
+		} {
+			t.Setenv(key, "")
+		}
+	}
+
+	t.Run("sarif path set", func(t *testing.T) {
+		clear(t)
+		t.Setenv("INPUT_FORMAT", "gocover")
+		t.Setenv("INPUT_SARIF", "coverage.sarif")
+
+		inp, err := ParseInputs()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if inp.SARIF != "coverage.sarif" {
+			t.Errorf("SARIF = %q, want %q", inp.SARIF, "coverage.sarif")
+		}
+	})
+
+	t.Run("sarif default empty", func(t *testing.T) {
+		clear(t)
+		t.Setenv("INPUT_FORMAT", "gocover")
+
+		inp, err := ParseInputs()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if inp.SARIF != "" {
+			t.Errorf("SARIF = %q, want empty", inp.SARIF)
 		}
 	})
 }

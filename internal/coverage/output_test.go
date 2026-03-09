@@ -102,7 +102,7 @@ func TestWriteOutputs(t *testing.T) {
 		{Name: "backend", Line: &line, Passed: true},
 	}
 
-	if err := WriteOutputs(true, results, nil); err != nil {
+	if err := WriteOutputs(true, results, nil, ""); err != nil {
 		t.Fatalf("WriteOutputs() error: %v", err)
 	}
 
@@ -136,7 +136,7 @@ func TestWriteOutputsWithBadge(t *testing.T) {
 		{Name: "total", Score: &score, Line: &line, Passed: true},
 	}
 
-	if err := WriteOutputs(true, results, nil); err != nil {
+	if err := WriteOutputs(true, results, nil, ""); err != nil {
 		t.Fatalf("WriteOutputs() error: %v", err)
 	}
 
@@ -178,7 +178,7 @@ func TestWriteOutputsPassedFalse(t *testing.T) {
 		{Name: "backend", Passed: false},
 	}
 
-	if err := WriteOutputs(false, results, nil); err != nil {
+	if err := WriteOutputs(false, results, nil, ""); err != nil {
 		t.Fatalf("WriteOutputs() error: %v", err)
 	}
 
@@ -202,7 +202,7 @@ func TestWriteOutputsNoScore(t *testing.T) {
 		{Name: "test", Passed: true},
 	}
 
-	if err := WriteOutputs(true, results, nil); err != nil {
+	if err := WriteOutputs(true, results, nil, ""); err != nil {
 		t.Fatalf("WriteOutputs() error: %v", err)
 	}
 
@@ -224,7 +224,7 @@ func TestWriteOutputsEmptyResults(t *testing.T) {
 	}
 	t.Setenv("GITHUB_OUTPUT", outputFile)
 
-	if err := WriteOutputs(true, nil, nil); err != nil {
+	if err := WriteOutputs(true, nil, nil, ""); err != nil {
 		t.Fatalf("WriteOutputs() error: %v", err)
 	}
 
@@ -425,7 +425,7 @@ func TestWriteJobSummaryNoEnvVar(t *testing.T) {
 
 func TestWriteOutputsNoEnvVar(t *testing.T) {
 	t.Setenv("GITHUB_OUTPUT", "")
-	err := WriteOutputs(true, nil, nil)
+	err := WriteOutputs(true, nil, nil, "")
 	if err != nil {
 		t.Fatalf("should not error when GITHUB_OUTPUT is empty: %v", err)
 	}
@@ -469,7 +469,7 @@ func TestWriteOutputsWithBaseline(t *testing.T) {
 		Timestamp: "2025-01-01T00:00:00Z",
 	}
 
-	if err := WriteOutputs(true, results, baseline); err != nil {
+	if err := WriteOutputs(true, results, baseline, ""); err != nil {
 		t.Fatalf("WriteOutputs() error: %v", err)
 	}
 
@@ -490,9 +490,55 @@ func TestWriteOutputsWithBaseline(t *testing.T) {
 	}
 }
 
+func TestWriteOutputsWithSARIF(t *testing.T) {
+	outputFile := filepath.Join(t.TempDir(), "github_output")
+	if err := os.WriteFile(outputFile, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITHUB_OUTPUT", outputFile)
+
+	results := []EntryResult{
+		{Name: "test", Passed: true},
+	}
+
+	if err := WriteOutputs(true, results, nil, "/tmp/coverage.sarif"); err != nil {
+		t.Fatalf("WriteOutputs() error: %v", err)
+	}
+
+	data, _ := os.ReadFile(outputFile)
+	content := string(data)
+
+	if !strings.Contains(content, "sarif=/tmp/coverage.sarif") {
+		t.Errorf("output should contain sarif path, got: %s", content)
+	}
+}
+
+func TestWriteOutputsWithoutSARIF(t *testing.T) {
+	outputFile := filepath.Join(t.TempDir(), "github_output")
+	if err := os.WriteFile(outputFile, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GITHUB_OUTPUT", outputFile)
+
+	results := []EntryResult{
+		{Name: "test", Passed: true},
+	}
+
+	if err := WriteOutputs(true, results, nil, ""); err != nil {
+		t.Fatalf("WriteOutputs() error: %v", err)
+	}
+
+	data, _ := os.ReadFile(outputFile)
+	content := string(data)
+
+	if strings.Contains(content, "sarif=") {
+		t.Errorf("output should not contain sarif when path is empty, got: %s", content)
+	}
+}
+
 func TestWriteOutputsInvalidPath(t *testing.T) {
 	t.Setenv("GITHUB_OUTPUT", "/nonexistent/dir/output")
-	err := WriteOutputs(true, nil, nil)
+	err := WriteOutputs(true, nil, nil, "")
 	if err == nil {
 		t.Fatal("expected error for invalid output path")
 	}

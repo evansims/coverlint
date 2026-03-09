@@ -162,7 +162,7 @@ func WriteJobSummary(results []EntryResult, hasTotal bool, suggestions []Suggest
 // Uses multiline delimiter syntax for the results value to prevent injection.
 // Badge outputs are generated from the last entry's line coverage (the total).
 // If baseline is non-nil, baseline JSON is written as a multiline output.
-func WriteOutputs(passed bool, results []EntryResult, baseline *BaselineData) (err error) {
+func WriteOutputs(passed bool, results []EntryResult, baseline *BaselineData, sarifPath string) (err error) {
 	outputPath := os.Getenv("GITHUB_OUTPUT")
 	if outputPath == "" {
 		return nil
@@ -218,6 +218,12 @@ func WriteOutputs(passed bool, results []EntryResult, baseline *BaselineData) (e
 		baselineDelimiter := "COVERLINT_BASELINE_EOF"
 		if _, err = fmt.Fprintf(f, "baseline<<%s\n%s\n%s\n", baselineDelimiter, string(baselineJSON), baselineDelimiter); err != nil {
 			return fmt.Errorf("writing baseline output: %w", err)
+		}
+	}
+
+	if sarifPath != "" {
+		if _, err = fmt.Fprintf(f, "sarif=%s\n", sarifPath); err != nil {
+			return fmt.Errorf("writing sarif output: %w", err)
 		}
 	}
 
