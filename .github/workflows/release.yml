@@ -97,7 +97,7 @@ jobs:
           cd dist
           sha256sum *.tar.gz *.zip > checksums.txt
 
-      - uses: anchore/sbom-action/download-syft@17ae1740179002c89186b61233e0f892c3118b11 # v0
+      - uses: anchore/sbom-action/download-syft@57aae528053a48a3f6235f2d9461b05fbcb7366d # v0
 
       - name: Generate SBOMs
         run: |
@@ -107,7 +107,7 @@ jobs:
             syft "$archive" -o spdx-json="${archive}.sbom.json"
           done
 
-      - uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4
+      - uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4
 
       - name: Sign checksums with cosign
         run: |

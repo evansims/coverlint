@@ -51,7 +51,7 @@ jobs:
       - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version-file: go.mod
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -104,7 +104,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -139,7 +139,7 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: "22"
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -203,11 +203,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # v2
+      - uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2
         with:
           php-version: "8.4"
           coverage: xdebug
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -246,7 +246,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -283,7 +283,7 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.13"
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
@@ -328,7 +328,7 @@ jobs:
         with:
           components: llvm-tools-preview
       - run: cargo install cargo-llvm-cov --version 0.8.4
-      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: coverlint-binary
       - run: chmod +x coverlint
